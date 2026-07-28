@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-user">
+                <div class="sidebar-avatar">{{ username[0]|upper }}</div>
+                <div class="sidebar-user-info">
+                    <h4>{{ username }}</h4>
+                    <span>🌾 {{ t('welcome_farmer') }}</span>
+                </div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item active"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <h1>{{ t('chat_title') }}</h1>
+                <p>{{ t('chat_subtitle') }}</p>
+            </div>
+            <div style="display:flex;gap:8px">
+                {% if selected_district %}
+                <div class="chat-district-badge">📍 {{ selected_district }}</div>
+                {% endif %}
+                <button class="lang-toggle" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <div class="chat-layout">
+            <div class="chat-sidebar" id="chat-sidebar">
+                <div class="chat-sidebar-header">
+                    <button class="chat-new-btn" id="chat-new-btn">
+                        <i class="fas fa-plus"></i> {{ t('chat_new') }}
+                    </button>
+                </div>
+                <div class="chat-conversations" id="chat-conversations">
+                    {% if conversations %}
+                        {% for conv in conversations %}
+                        <div class="chat-conv-item{% if current_conv and conv.id == current_conv.id %} active{% endif %}" data-conv-id="{{ conv.id }}">
+                            <div class="chat-conv-title">{{ conv.title }}</div>
+                            <div class="chat-conv-meta">
+                                <span>{{ conv.district or '—' }}</span>
+                                <button class="chat-conv-delete" data-conv-id="{{ conv.id }}" title="{{ t('chat_delete') }}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="chat-conv-empty">{{ t('chat_no_history') }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="chat-main">
+                <div class="chat-messages" id="chat-messages">
+                    {% if current_conv and current_conv.messages %}
+                        {% for msg in current_conv.messages %}
+                        <div class="chat-bubble {{ msg.role }}">
+                            <div class="chat-bubble-content">{{ msg.content }}</div>
+                            <div class="chat-bubble-actions">
+                                <button class="chat-copy-btn" title="{{ t('chat_copy') }}"><i class="fas fa-copy"></i></button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                <div class="chat-suggestions" id="chat-suggestions">
+                    <div class="chat-suggestions-label">{{ t('chat_suggestions') }}</div>
+                    <div class="chat-suggestions-grid">
+                        <span class="chat-suggestion-chip" data-text="{{ t('chat_suggestion_1') }}">{{ t('chat_suggestion_1') }}</span>
+                        <span class="chat-suggestion-chip" data-text="{{ t('chat_suggestion_2') }}">{{ t('chat_suggestion_2') }}</span>
+                        <span class="chat-suggestion-chip" data-text="{{ t('chat_suggestion_3') }}">{{ t('chat_suggestion_3') }}</span>
+                        <span class="chat-suggestion-chip" data-text="{{ t('chat_suggestion_4') }}">{{ t('chat_suggestion_4') }}</span>
+                        <span class="chat-suggestion-chip" data-text="{{ t('chat_suggestion_5') }}">{{ t('chat_suggestion_5') }}</span>
+                        <span class="chat-suggestion-chip" data-text="{{ t('chat_suggestion_6') }}">{{ t('chat_suggestion_6') }}</span>
+                    </div>
+                </div>
+
+                <div class="chat-typing" id="chat-typing" style="display:none">
+                    <div class="chat-typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <span class="chat-typing-text">{{ t('chat_thinking') }}</span>
+                </div>
+
+                <div class="chat-input-area">
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chat-input" placeholder="{{ t('chat_placeholder') }}" {% if not current_conv %}disabled{% endif %}>
+                        <div class="chat-input-actions">
+                            <button class="chat-input-btn" id="chat-export-btn" title="{{ t('chat_export') }}" {% if not current_conv or not current_conv.messages %}style="display:none"{% endif %}>
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="chat-input-btn chat-input-send" id="chat-send" {% if not current_conv %}disabled{% endif %}>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div class="chat-export-modal" id="chat-export-modal" style="display:none">
+    <div class="chat-export-overlay"></div>
+    <div class="chat-export-dialog">
+        <h3>{{ t('chat_export_title') }}</h3>
+        <div class="chat-export-options">
+            <button class="chat-export-option" data-format="txt">
+                <i class="fas fa-file-alt"></i>
+                <span>{{ t('chat_export_txt') }}</span>
+            </button>
+            <button class="chat-export-option" data-format="pdf">
+                <i class="fas fa-file-pdf"></i>
+                <span>{{ t('chat_export_pdf') }}</span>
+            </button>
+        </div>
+        <button class="chat-export-cancel">{{ t('cancel') }}</button>
+    </div>
+</div>
+
+<div class="chat-toast" id="chat-toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+{% endblock %}

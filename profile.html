@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item active"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+    <main class="main-content">
+        <div class="page-header">
+            <div><button class="mobile-toggle" onclick="toggleSidebar()">☰</button><h1>{{ t('profile_title') }}</h1></div>
+            <div style="display:flex;gap:8px">
+                <button class="lang-toggle" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="stat-card">
+                <div style="text-align:center;margin-bottom:24px">
+                    <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--emerald));display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;font-weight:700;margin:0 auto 12px">{{ user.username[0]|upper }}</div>
+                    <h2 style="font-size:1.3rem">{{ user.username }}</h2>
+                </div>
+            </div>
+            <div class="stat-card">
+                <h3 style="margin-bottom:20px">{{ t('profile_title') }}</h3>
+                <form id="profile-form" style="display:flex;flex-direction:column;gap:16px">
+                    <div class="form-group">
+                        <label>{{ t('profile_username') }}</label>
+                        <input type="text" value="{{ user.username }}" disabled style="background:var(--gray-100);cursor:not-allowed">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('profile_district') }}</label>
+                        <select name="district">
+                            <option value="">{{ t('edit') }}...</option>
+                            {% for d in districts %}
+                            <option value="{{ d }}" {% if user.district == d %}selected{% endif %}>{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('profile_village') }}</label>
+                        <input type="text" name="village" value="{{ user.village }}">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('profile_language') }}</label>
+                        <select name="preferred_language">
+                            <option value="en" {% if user.preferred_language == 'en' %}selected{% endif %}>English</option>
+                            <option value="ta" {% if user.preferred_language == 'ta' %}selected{% endif %}>தமிழ்</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('profile_farm_size') }}</label>
+                        <input type="number" name="farm_size" step="0.01" value="{{ user.farm_size }}">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('profile_crops_grown') }}</label>
+                        <input type="text" name="primary_crops" value="{{ user.primary_crops }}" placeholder="e.g., Paddy, Coconut, Banana">
+                    </div>
+                    <button type="submit" class="btn btn-primary">{{ t('profile_save') }}</button>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+document.getElementById("profile-form")?.addEventListener("submit", function(e){
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(this));
+    fetch("/api/profile", {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(res=>{
+        if(res.success) { showToast(res.message,"success"); setTimeout(()=>location.reload(),1500); }
+        else showToast(res.message,"error");
+    });
+});
+</script>
+{% endblock %}

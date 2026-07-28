@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/weather.css') }}">
+<div class="wth-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item active"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+
+    <main class="wth-main">
+        <div class="wth-header">
+            <div>
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <h1><span class="wth-header-icon">🌤️</span> {% if lang == 'ta' %}வானிலை நுண்ணறிவுகள்{% else %}Weather Insights{% endif %}</h1>
+                <p class="wth-header-sub">{% if lang == 'ta' %}தமிழ்நாடு விவசாயிகளுக்கான நேரடி வானிலை முன்னறிவிப்பு{% else %}Live weather forecasts for Tamil Nadu farmers{% endif %}</p>
+            </div>
+            <div class="wth-header-actions">
+                <button class="wth-btn wth-btn-ghost" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="wth-btn wth-btn-ghost" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <!-- Favorites Bar -->
+        <div class="wth-favorites-bar" id="wth-favorites-bar" style="display:none">
+            <span class="wth-fav-label">⭐ {% if lang == 'ta' %}விருப்ப இடங்கள்{% else %}Favorites{% endif %}:</span>
+            <div class="wth-fav-items" id="wth-fav-items"></div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="wth-card wth-search-card">
+            <div class="wth-search-grid">
+                <div class="wth-search-field">
+                    <label class="wth-field-label">{% if lang == 'ta' %}மாவட்டம்{% else %}District{% endif %}</label>
+                    <div class="wth-search-select">
+                        <input type="text" class="wth-search-input" id="wth-district-input" placeholder="{% if lang == 'ta' %}மாவட்டத்தை தேடுங்கள்...{% else %}Search district...{% endif %}" autocomplete="off">
+                    </div>
+                </div>
+                <div class="wth-search-field">
+                    <label class="wth-field-label">{% if lang == 'ta' %}நகரம் / கிராமம்{% else %}Town / Village{% endif %}</label>
+                    <input type="text" class="wth-search-input" id="wth-town-input" placeholder="{% if lang == 'ta' %}எ.கா. கும்பகோணம், பொள்ளாச்சி...{% else %}E.g. Kumbakonam, Pollachi...{% endif %}" autocomplete="off">
+                </div>
+                <div class="wth-search-field wth-search-btn-wrap">
+                    <button class="wth-btn wth-btn-primary wth-btn-large" id="wth-fetch-btn" onclick="wthFetchWeather()">🌤️ {% if lang == 'ta' %}நேரடி வானிலையைப் பெறுக{% else %}Get Live Weather{% endif %}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Weather -->
+        <div class="wth-current-section" id="wth-current-section" style="display:none">
+            <div class="wth-card wth-current-card">
+                <div class="wth-current-top">
+                    <div class="wth-current-left">
+                        <div class="wth-location-badge" id="wth-location-badge"></div>
+                        <div class="wth-temp-display">
+                            <span class="wth-temp-value" id="wth-temp-value">--</span>
+                            <span class="wth-temp-unit">°C</span>
+                        </div>
+                        <div class="wth-feels-like" id="wth-feels-like"></div>
+                        <div class="wth-condition-row">
+                            <span class="wth-weather-icon" id="wth-weather-icon">🌤️</span>
+                            <span class="wth-condition-text" id="wth-condition-text">--</span>
+                        </div>
+                        <div class="wth-last-updated" id="wth-last-updated"></div>
+                    </div>
+                    <div class="wth-current-right">
+                        <div class="wth-detail-grid">
+                            <div class="wth-detail-item">
+                                <div class="wth-detail-icon">💧</div>
+                                <div class="wth-detail-info"><span class="wth-detail-label">{% if lang == 'ta' %}ஈரப்பதம்{% else %}Humidity{% endif %}</span><span class="wth-detail-value" id="wth-humidity">--%</span></div>
+                            </div>
+                            <div class="wth-detail-item">
+                                <div class="wth-detail-icon">🌬️</div>
+                                <div class="wth-detail-info"><span class="wth-detail-label">{% if lang == 'ta' %}காற்று{% else %}Wind{% endif %}</span><span class="wth-detail-value" id="wth-wind">-- km/h</span></div>
+                            </div>
+                            <div class="wth-detail-item">
+                                <div class="wth-detail-icon">🌧️</div>
+                                <div class="wth-detail-info"><span class="wth-detail-label">{% if lang == 'ta' %}மழை வாய்ப்பு{% else %}Rain{% endif %}</span><span class="wth-detail-value" id="wth-rain">--%</span></div>
+                            </div>
+                            <div class="wth-detail-item">
+                                <div class="wth-detail-icon">🔽</div>
+                                <div class="wth-detail-info"><span class="wth-detail-label">{% if lang == 'ta' %}அழுத்தம்{% else %}Pressure{% endif %}</span><span class="wth-detail-value" id="wth-pressure">-- hPa</span></div>
+                            </div>
+                            <div class="wth-detail-item">
+                                <div class="wth-detail-icon">👁️</div>
+                                <div class="wth-detail-info"><span class="wth-detail-label">{% if lang == 'ta' %}தெரிவு{% else %}Visibility{% endif %}</span><span class="wth-detail-value" id="wth-visibility">-- km</span></div>
+                            </div>
+                            <div class="wth-detail-item">
+                                <div class="wth-detail-icon">☀️</div>
+                                <div class="wth-detail-info"><span class="wth-detail-label">{% if lang == 'ta' %}UV குறியீடு{% else %}UV Index{% endif %}</span><span class="wth-detail-value" id="wth-uv">--</span></div>
+                            </div>
+                            <div class="wth-detail-item">
+                                <div class="wth-detail-icon">🌅</div>
+                                <div class="wth-detail-info"><span class="wth-detail-label">{% if lang == 'ta' %}சூரிய உதயம்{% else %}Sunrise{% endif %}</span><span class="wth-detail-value" id="wth-sunrise">--</span></div>
+                            </div>
+                            <div class="wth-detail-item">
+                                <div class="wth-detail-icon">🌇</div>
+                                <div class="wth-detail-info"><span class="wth-detail-label">{% if lang == 'ta' %}சூரிய அஸ்தமனம்{% else %}Sunset{% endif %}</span><span class="wth-detail-value" id="wth-sunset">--</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wth-current-actions">
+                    <button class="wth-btn wth-btn-success wth-btn-sm" onclick="wthSaveWeather()">💾 {% if lang == 'ta' %}சேமிக்கவும்{% else %}Save{% endif %}</button>
+                    <button class="wth-btn wth-btn-ghost wth-btn-sm" onclick="wthToggleFavorite()">⭐ {% if lang == 'ta' %}விருப்பத்தில் சேர்க்க{% else %}Add to Favorites{% endif %}</button>
+                    <label class="wth-auto-refresh" id="wth-auto-refresh-label">
+                        <input type="checkbox" id="wth-auto-refresh" onchange="wthToggleAutoRefresh()">
+                        {% if lang == 'ta' %}ஒவ்வொரு 15 நிமிடமும் புதுப்பிக்க{% else %}Auto Refresh Every 15 Min{% endif %}
+                    </label>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="wth-alerts" id="wth-alerts" style="display:none"></div>
+
+            <!-- Farming Advice -->
+            <div class="wth-card wth-advice-card" id="wth-advice-card" style="display:none">
+                <h3 class="wth-section-title">🌾 {% if lang == 'ta' %}AI விவசாய வானிலை ஆலோசனை{% else %}AI Farming Weather Advice{% endif %}</h3>
+                <p class="wth-advice-text" id="wth-advice-text"></p>
+            </div>
+
+            <!-- Hourly Forecast -->
+            <div class="wth-card">
+                <h3 class="wth-section-title">⏰ {% if lang == 'ta' %}24 மணி நேர முன்னறிவிப்பு{% else %}24-Hour Forecast{% endif %}</h3>
+                <div class="wth-hourly-scroll" id="wth-hourly-scroll"></div>
+            </div>
+
+            <!-- 7-Day Forecast -->
+            <div class="wth-card">
+                <h3 class="wth-section-title">📅 {% if lang == 'ta' %}7 நாள் முன்னறிவிப்பு{% else %}7-Day Forecast{% endif %}</h3>
+                <div class="wth-daily-grid" id="wth-daily-grid"></div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="wth-loading-overlay" id="wth-loading-overlay" style="display:none">
+            <div class="wth-loading-card">
+                <div class="wth-spinner"></div>
+                <p id="wth-loading-text">{% if lang == 'ta' %}வானிலை சேவையுடன் இணைக்கிறது...{% else %}Connecting to weather service...{% endif %}</p>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="wth-card" id="wth-history-section">
+            <div class="wth-card-header-flex">
+                <h3 class="wth-section-title">📋 {% if lang == 'ta' %}வானிலை வரலாறு{% else %}Weather History{% endif %}</h3>
+                <div class="wth-history-controls">
+                    <input type="text" class="wth-search-input wth-history-search" id="wth-history-search" placeholder="{% if lang == 'ta' %}தேடு...{% else %}Search...{% endif %}" autocomplete="off">
+                </div>
+            </div>
+            <div id="wth-history-list"></div>
+        </div>
+    </main>
+</div>
+
+<div class="wth-toast" id="wth-toast"></div>
+
+<script>
+var WTH_DATA = {
+    districts: {{ districts_json|safe }},
+    favorites: {{ favorites_json|safe }},
+    lang: "{{ lang }}"
+};
+</script>
+{% endblock %}

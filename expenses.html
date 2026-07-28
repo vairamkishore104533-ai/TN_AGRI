@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/expenses.css') }}">
+<div class="exp-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item active"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+
+    <main class="exp-main">
+        <div class="exp-header">
+            <div>
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <h1><span class="exp-header-icon">💰</span> {% if lang == 'ta' %}செலவு கண்காணிப்பு{% else %}Expense Tracker{% endif %}</h1>
+                <p class="exp-header-sub">{% if lang == 'ta' %}உங்கள் பண்ணை வருமானம் மற்றும் செலவுகளை கண்காணிக்கவும்{% else %}Track your farm income and expenses{% endif %}</p>
+            </div>
+            <div class="exp-header-actions">
+                <button class="exp-btn exp-btn-ghost exp-btn-icon" onclick="expExport('csv')" title="CSV">📄</button>
+                <button class="exp-btn exp-btn-ghost exp-btn-icon" onclick="expExport('xlsx')" title="Excel">📊</button>
+                <button class="exp-btn exp-btn-ghost exp-btn-icon" onclick="expExport('pdf')" title="PDF">📕</button>
+                <button class="exp-btn exp-btn-ghost" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="exp-btn exp-btn-ghost" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        {% if page_error is defined and page_error %}
+        <div class="exp-error-banner">⚠️ {{ page_error }}</div>
+        {% endif %}
+
+        <!-- Financial Summary -->
+        <div class="exp-summary-grid" id="exp-summary">
+            <div class="exp-card exp-summary-card exp-summary-income">
+                <div class="exp-summary-icon">📈</div>
+                <div class="exp-summary-info">
+                    <span class="exp-summary-label">{% if lang == 'ta' %}மொத்த வருமானம்{% else %}Total Income{% endif %}</span>
+                    <span class="exp-summary-value" id="exp-summary-income">₹0</span>
+                </div>
+            </div>
+            <div class="exp-card exp-summary-card exp-summary-expense">
+                <div class="exp-summary-icon">📉</div>
+                <div class="exp-summary-info">
+                    <span class="exp-summary-label">{% if lang == 'ta' %}மொத்த செலவு{% else %}Total Expenses{% endif %}</span>
+                    <span class="exp-summary-value" id="exp-summary-expense">₹0</span>
+                </div>
+            </div>
+            <div class="exp-card exp-summary-card exp-summary-profit">
+                <div class="exp-summary-icon">🏆</div>
+                <div class="exp-summary-info">
+                    <span class="exp-summary-label">{% if lang == 'ta' %}நிகர லாபம்{% else %}Net Profit{% endif %}</span>
+                    <span class="exp-summary-value" id="exp-summary-profit">₹0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="exp-stats-row" id="exp-stats-row" style="display:none">
+            <div class="exp-card exp-stat-card">
+                <span class="exp-stat-label">📊 {% if lang == 'ta' %}மொத்த பரிவர்த்தனைகள்{% else %}Total Transactions{% endif %}</span>
+                <span class="exp-stat-value" id="exp-stat-count">0</span>
+            </div>
+            <div class="exp-card exp-stat-card">
+                <span class="exp-stat-label">📈 {% if lang == 'ta' %}அதிக வருமானம்{% else %}Highest Income{% endif %}</span>
+                <span class="exp-stat-value" id="exp-stat-highest-inc">₹0</span>
+                <span class="exp-stat-sub" id="exp-stat-highest-inc-cat"></span>
+            </div>
+            <div class="exp-card exp-stat-card">
+                <span class="exp-stat-label">📉 {% if lang == 'ta' %}அதிக செலவு{% else %}Highest Expense{% endif %}</span>
+                <span class="exp-stat-value" id="exp-stat-highest-exp">₹0</span>
+                <span class="exp-stat-sub" id="exp-stat-highest-exp-cat"></span>
+            </div>
+            <div class="exp-card exp-stat-card">
+                <span class="exp-stat-label">💎 {% if lang == 'ta' %}லாப விகிதம்{% else %}Profit Margin{% endif %}</span>
+                <span class="exp-stat-value" id="exp-stat-margin">0%</span>
+            </div>
+            <div class="exp-card exp-stat-card">
+                <span class="exp-stat-label">🏦 {% if lang == 'ta' %}சேமிப்பு விகிதம்{% else %}Savings Rate{% endif %}</span>
+                <span class="exp-stat-value" id="exp-stat-savings">0%</span>
+            </div>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="exp-card exp-insights-card" id="exp-insights-card" style="display:none">
+            <div class="exp-insights-header">
+                <h3 class="exp-section-title">🤖 {% if lang == 'ta' %}AI நிதி நுண்ணறிவுகள்{% else %}AI Financial Insights{% endif %}</h3>
+                <button class="exp-btn exp-btn-sm exp-btn-ghost" onclick="expRefreshInsights()">🔄 {% if lang == 'ta' %}புதுப்பிக்க{% else %}Refresh{% endif %}</button>
+            </div>
+            <div class="exp-insights-loading" id="exp-insights-loading" style="display:none">
+                <div class="exp-spinner"></div>
+                <span>{% if lang == 'ta' %}AI நுண்ணறிவுகளை உருவாக்குகிறது...{% else %}Generating AI insights...{% endif %}</span>
+            </div>
+            <div class="exp-insights-text" id="exp-insights-text"></div>
+        </div>
+
+        <!-- Add Transaction -->
+        <div class="exp-card">
+            <div class="exp-form-tabs">
+                <button class="exp-form-tab active" data-type="income" onclick="expSwitchForm('income')">📈 {% if lang == 'ta' %}வருமானம் சேர்க்க{% else %}Add Income{% endif %}</button>
+                <button class="exp-form-tab" data-type="expense" onclick="expSwitchForm('expense')">📉 {% if lang == 'ta' %}செலவு சேர்க்க{% else %}Add Expense{% endif %}</button>
+            </div>
+            <form class="exp-form" id="exp-form">
+                <input type="hidden" name="type" id="exp-form-type" value="income">
+                <input type="hidden" name="edit_id" id="exp-form-edit-id" value="">
+                <div class="exp-form-grid">
+                    <div class="exp-form-field">
+                        <label class="exp-field-label">{% if lang == 'ta' %}வகை{% else %}Type{% endif %}</label>
+                        <select class="exp-select" name="type_select" id="exp-type-select" onchange="expSwitchForm(this.value)">
+                            <option value="income">📈 {% if lang == 'ta' %}வருமானம்{% else %}Income{% endif %}</option>
+                            <option value="expense">📉 {% if lang == 'ta' %}செலவு{% else %}Expense{% endif %}</option>
+                        </select>
+                    </div>
+                    <div class="exp-form-field">
+                        <label class="exp-field-label">{% if lang == 'ta' %}பிரிவு{% else %}Category{% endif %}</label>
+                        <select class="exp-select" name="category" id="exp-form-category" required></select>
+                    </div>
+                    <div class="exp-form-field">
+                        <label class="exp-field-label">{% if lang == 'ta' %}தொகை (₹){% else %}Amount (₹){% endif %}</label>
+                        <input type="number" class="exp-input" name="amount" min="1" step="0.01" required placeholder="{% if lang == 'ta' %}தொகையை உள்ளிடுக{% else %}Enter amount{% endif %}">
+                    </div>
+                    <div class="exp-form-field">
+                        <label class="exp-field-label">{% if lang == 'ta' %}தேதி{% else %}Date{% endif %}</label>
+                        <input type="date" class="exp-input" name="date" value="{{ today }}">
+                    </div>
+                </div>
+                <div class="exp-form-field" style="margin-top:12px">
+                    <label class="exp-field-label">{% if lang == 'ta' %}குறிப்புகள்{% else %}Notes{% endif %}</label>
+                    <textarea class="exp-textarea" name="description" rows="2" maxlength="500" placeholder="{% if lang == 'ta' %}எ.கா. நெல் வயலுக்கு உரம் வாங்கப்பட்டது{% else %}e.g. Purchased fertilizer for paddy field{% endif %}"></textarea>
+                </div>
+                <div class="exp-form-actions">
+                    <button type="submit" class="exp-btn exp-btn-primary exp-btn-large" id="exp-form-submit">
+                        💾 {% if lang == 'ta' %}சேமிக்க{% else %}Save Transaction{% endif %}
+                    </button>
+                    <button type="button" class="exp-btn exp-btn-ghost" id="exp-form-cancel" style="display:none" onclick="expCancelEdit()">✕ {% if lang == 'ta' %}ரத்து{% else %}Cancel{% endif %}</button>
+                </div>
+                <div class="exp-form-loading" id="exp-form-loading" style="display:none">
+                    <div class="exp-spinner"></div>
+                    <span>{% if lang == 'ta' %}பரிவர்த்தனையை சேமிக்கிறது...{% else %}Saving transaction...{% endif %}</span>
+                </div>
+            </form>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="exp-charts-row" id="exp-charts-section" style="display:none">
+            <div class="exp-card exp-chart-card">
+                <h3 class="exp-section-title">📊 {% if lang == 'ta' %}வருமானம் vs செலவு{% else %}Income vs Expense{% endif %}</h3>
+                <div class="exp-chart-container"><canvas id="exp-chart-income-expense"></canvas></div>
+            </div>
+            <div class="exp-card exp-chart-card">
+                <h3 class="exp-section-title">🥧 {% if lang == 'ta' %}செலவு பகுப்பாய்வு{% else %}Expense Breakdown{% endif %}</h3>
+                <div class="exp-chart-container"><canvas id="exp-chart-expense-pie"></canvas></div>
+            </div>
+            <div class="exp-card exp-chart-card">
+                <h3 class="exp-section-title">📈 {% if lang == 'ta' %}மாத வருமான போக்கு{% else %}Monthly Income Trend{% endif %}</h3>
+                <div class="exp-chart-container"><canvas id="exp-chart-income-trend"></canvas></div>
+            </div>
+            <div class="exp-card exp-chart-card">
+                <h3 class="exp-section-title">📉 {% if lang == 'ta' %}மாத செலவு போக்கு{% else %}Monthly Expense Trend{% endif %}</h3>
+                <div class="exp-chart-container"><canvas id="exp-chart-expense-trend"></canvas></div>
+            </div>
+            <div class="exp-card exp-chart-card">
+                <h3 class="exp-section-title">📊 {% if lang == 'ta' %}லாப போக்கு{% else %}Profit Trend{% endif %}</h3>
+                <div class="exp-chart-container"><canvas id="exp-chart-profit-trend"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Budget Tracker -->
+        <div class="exp-card">
+            <div class="exp-budget-header">
+                <h3 class="exp-section-title">🎯 {% if lang == 'ta' %}பட்ஜெட் கண்காணிப்பு{% else %}Budget Tracker{% endif %}</h3>
+                <button class="exp-btn exp-btn-sm exp-btn-ghost" onclick="expToggleBudgetForm()">✏️ {% if lang == 'ta' %}பட்ஜெட் அமைக்க{% else %}Set Budgets{% endif %}</button>
+            </div>
+            <div class="exp-budget-form" id="exp-budget-form" style="display:none">
+                <p class="exp-budget-desc">{% if lang == 'ta' %}செலவு பிரிவுகளுக்கு மாதாந்திர பட்ஜெட்டை அமைக்கவும்.{% else %}Set monthly budget limits for expense categories.{% endif %}</p>
+                <div class="exp-budget-fields" id="exp-budget-fields"></div>
+                <button class="exp-btn exp-btn-primary exp-btn-full" onclick="expSaveBudgets()">💾 {% if lang == 'ta' %}பட்ஜெட்டுகளை சேமிக்க{% else %}Save Budgets{% endif %}</button>
+            </div>
+            <div class="exp-budget-alerts" id="exp-budget-alerts"></div>
+            <div class="exp-budget-list" id="exp-budget-list"></div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="exp-card">
+            <div class="exp-table-header">
+                <h3 class="exp-section-title">📋 {% if lang == 'ta' %}பரிவர்த்தனைகள்{% else %}Transactions{% endif %} <span class="exp-count" id="exp-count"></span></h3>
+            </div>
+            <div class="exp-filter-bar">
+                <div class="exp-filter-search-wrap">
+                    <input type="text" class="exp-input" id="exp-filter-search" placeholder="🔍 {% if lang == 'ta' %}தேடுக...{% else %}Search...{% endif %}">
+                </div>
+                <div class="exp-filter-select-wrap">
+                    <select class="exp-select" id="exp-filter-type">
+                        <option value="">{% if lang == 'ta' %}வகை{% else %}Type{% endif %}</option>
+                        <option value="income">📈 {% if lang == 'ta' %}வருமானம்{% else %}Income{% endif %}</option>
+                        <option value="expense">📉 {% if lang == 'ta' %}செலவு{% else %}Expense{% endif %}</option>
+                    </select>
+                </div>
+                <div class="exp-filter-select-wrap">
+                    <select class="exp-select" id="exp-filter-category">
+                        <option value="">{% if lang == 'ta' %}பிரிவு{% else %}Category{% endif %}</option>
+                    </select>
+                </div>
+                <div class="exp-filter-select-wrap">
+                    <select class="exp-select" id="exp-filter-month">
+                        <option value="">{% if lang == 'ta' %}மாதம்{% else %}Month{% endif %}</option>
+                        {% for m in range(1,13) %}
+                        <option value="{{ '%02d' % m }}">{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="exp-filter-select-wrap">
+                    <select class="exp-select" id="exp-filter-year">
+                        <option value="">{% if lang == 'ta' %}ஆண்டு{% else %}Year{% endif %}</option>
+                        {% for y in range(2022, 2027) %}
+                        <option value="{{ y }}">{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="exp-filter-select-wrap">
+                    <select class="exp-select" id="exp-filter-sort">
+                        <option value="date_desc">🕐 {% if lang == 'ta' %}புதியது{% else %}Newest{% endif %}</option>
+                        <option value="date_asc">🕐 {% if lang == 'ta' %}பழையது{% else %}Oldest{% endif %}</option>
+                        <option value="amount_desc">💰 {% if lang == 'ta' %}அதிக தொகை{% else %}Highest{% endif %}</option>
+                        <option value="amount_asc">💰 {% if lang == 'ta' %}குறைந்த தொகை{% else %}Lowest{% endif %}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="exp-table-wrap">
+                <table class="exp-table">
+                    <thead>
+                        <tr>
+                            <th>{% if lang == 'ta' %}வகை{% else %}Type{% endif %}</th>
+                            <th>{% if lang == 'ta' %}பிரிவு{% else %}Category{% endif %}</th>
+                            <th>{% if lang == 'ta' %}குறிப்புகள்{% else %}Notes{% endif %}</th>
+                            <th>{% if lang == 'ta' %}தொகை{% else %}Amount{% endif %}</th>
+                            <th>{% if lang == 'ta' %}தேதி{% else %}Date{% endif %}</th>
+                            <th>{% if lang == 'ta' %}செயல்கள்{% else %}Actions{% endif %}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exp-table-body"></tbody>
+                </table>
+            </div>
+            <div class="exp-pagination" id="exp-pagination"></div>
+        </div>
+
+        <!-- Monthly Summary -->
+        <div class="exp-card" id="exp-monthly-section" style="display:none">
+            <h3 class="exp-section-title">📅 {% if lang == 'ta' %}மாதாந்திர சுருக்கம்{% else %}Monthly Summary{% endif %}</h3>
+            <div class="exp-monthly-grid" id="exp-monthly-grid"></div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="exp-card" id="exp-activity-section" style="display:none">
+            <h3 class="exp-section-title">🕐 {% if lang == 'ta' %}சமீபத்திய செயல்பாடுகள்{% else %}Recent Activity{% endif %}</h3>
+            <div class="exp-activity-list" id="exp-activity-list"></div>
+        </div>
+    </main>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="exp-modal-overlay" id="exp-delete-modal" style="display:none" onclick="if(event.target===this)expCloseDelete()">
+    <div class="exp-modal-sm">
+        <div class="exp-modal-header">
+            <h3>⚠️ {% if lang == 'ta' %}பரிவர்த்தனையை நீக்கவா?{% else %}Delete Transaction?{% endif %}</h3>
+            <button class="exp-modal-close" onclick="expCloseDelete()">✕</button>
+        </div>
+        <div class="exp-modal-body">
+            <p>{% if lang == 'ta' %}இந்த பரிவர்த்தனையை நிச்சயமாக நீக்க விரும்புகிறீர்களா? இதை மீட்டெடுக்க முடியாது.{% else %}Are you sure you want to delete this transaction? This cannot be undone.{% endif %}</p>
+            <div class="exp-modal-actions">
+                <button class="exp-btn exp-btn-danger" id="exp-delete-confirm">🗑️ {% if lang == 'ta' %}நீக்குக{% else %}Delete{% endif %}</button>
+                <button class="exp-btn exp-btn-ghost" onclick="expCloseDelete()">✕ {% if lang == 'ta' %}ரத்து{% else %}Cancel{% endif %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="exp-toast" id="exp-toast"></div>
+
+<script>
+var INCOME_CATS = {{ income_categories_json|safe }};
+var EXPENSE_CATS = {{ expense_categories_json|safe }};
+var BUDGETS_DATA = {{ budgets_json|safe }};
+</script>
+<script src="{{ url_for('static', filename='js/expenses.js') }}"></script>
+{% endblock %}

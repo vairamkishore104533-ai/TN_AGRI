@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card scale-in">
+            <div class="auth-header">
+                <div class="auth-logo">🌾 <span>AI Agriculture Assistant</span></div>
+                <h1>{{ t('register_title') }}</h1>
+                <p>{{ t('register_subtitle') }}</p>
+            </div>
+            <div class="auth-error" id="auth-error"></div>
+            <form class="auth-form" id="register-form">
+                <div class="form-group">
+                    <label>{{ t('register_username') }}</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">👤</span>
+                        <input type="text" name="username" placeholder="{{ t('register_username') }}" required minlength="4">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>{{ t('register_password') }}</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" name="password" placeholder="{{ t('register_password') }}" required minlength="4">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>{{ t('register_confirm') }}</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" name="confirm_password" placeholder="{{ t('register_confirm') }}" required minlength="4">
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit">{{ t('register_btn') }}</button>
+            </form>
+            <div class="auth-footer">
+                <p>{{ t('register_have_account') }} <a href="{{ url_for('auth.login') }}">{{ t('register_login_link') }}</a></p>
+            </div>
+            <div style="text-align:center;margin-top:16px">
+                <button class="lang-toggle" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')" style="display:inline-flex">
+                    🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById("register-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const data = {
+        username: this.username.value,
+        password: this.password.value,
+        confirm_password: this.confirm_password.value,
+        lang: "{{ lang }}"
+    };
+    const btn = this.querySelector(".btn-submit");
+    btn.disabled = true;
+    btn.textContent = "{{ t('please_wait') }}";
+    document.getElementById("auth-error").classList.remove("active");
+
+    fetch("{{ url_for('auth.register') }}", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        btn.disabled = false;
+        btn.textContent = "{{ t('register_btn') }}";
+        if (res.success) {
+            showToast(res.message, "success");
+            setTimeout(() => window.location.href = res.redirect, 1000);
+        } else {
+            const errorEl = document.getElementById("auth-error");
+            errorEl.textContent = res.message;
+            errorEl.classList.add("active");
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = "{{ t('register_btn') }}";
+        const errorEl = document.getElementById("auth-error");
+        errorEl.textContent = "{{ t('error_occurred') }}";
+        errorEl.classList.add("active");
+    });
+});
+</script>
+{% endblock %}

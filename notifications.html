@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
+<div class="notif-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item active"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+
+    <main class="notif-main">
+        <div class="notif-header">
+            <div>
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <h1>🔔 {% if lang == 'ta' %}அறிவிப்புகள்{% else %}Notifications{% endif %}</h1>
+                <p class="notif-header-sub">{% if lang == 'ta' %}உங்கள் பண்ணை செயல்பாடுகள் பற்றிய முக்கிய புதுப்பிப்புகள்{% else %}Important updates about your farm activities{% endif %}</p>
+            </div>
+            <div class="notif-header-actions">
+                <button class="notif-btn notif-btn-ghost" onclick="notifSetLanguage()">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="notif-btn notif-btn-ghost" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="notif-stats">
+            <div class="notif-stat-card">
+                <span class="notif-stat-icon">📬</span>
+                <div>
+                    <div class="notif-stat-value" id="notif-total-count">0</div>
+                    <div class="notif-stat-label">{% if lang == 'ta' %}மொத்த அறிவிப்புகள்{% else %}Total Notifications{% endif %}</div>
+                </div>
+            </div>
+            <div class="notif-stat-card">
+                <span class="notif-stat-icon">🔴</span>
+                <div>
+                    <div class="notif-stat-value" id="notif-unread-count">0</div>
+                    <div class="notif-stat-label">{% if lang == 'ta' %}படிக்காதவை{% else %}Unread{% endif %}</div>
+                </div>
+            </div>
+            <div class="notif-stat-card">
+                <button class="notif-btn notif-btn-primary" onclick="notifGenerate()">🔄 {% if lang == 'ta' %}புதுப்பிப்புகளை சரிபார்க்க{% else %}Check Updates{% endif %}</button>
+            </div>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="notif-category-tabs">
+            <button class="notif-cat-tab active" data-cat="" onclick="notifFilter('')">{% if lang == 'ta' %}அனைத்தும்{% else %}All{% endif %}</button>
+            <button class="notif-cat-tab" data-cat="scheme" onclick="notifFilter('scheme')">🏛️ {% if lang == 'ta' %}திட்டங்கள்{% else %}Schemes{% endif %}</button>
+            <button class="notif-cat-tab" data-cat="market" onclick="notifFilter('market')">📊 {% if lang == 'ta' %}சந்தை{% else %}Market{% endif %}</button>
+            <button class="notif-cat-tab" data-cat="irrigation" onclick="notifFilter('irrigation')">💧 {% if lang == 'ta' %}நீர்ப்பாசனம்{% else %}Irrigation{% endif %}</button>
+            <button class="notif-cat-tab" data-cat="fertilizer" onclick="notifFilter('fertilizer')">🧪 {% if lang == 'ta' %}உரம்{% else %}Fertilizer{% endif %}</button>
+        </div>
+
+        <!-- Actions -->
+        <div class="notif-actions">
+            <button class="notif-btn notif-btn-sm notif-btn-ghost" onclick="notifMarkAllRead()">✅ {% if lang == 'ta' %}அனைத்தையும் படித்ததாக குறிக்க{% else %}Mark All Read{% endif %}</button>
+            <button class="notif-btn notif-btn-sm notif-btn-danger" onclick="notifClearAll()">🗑️ {% if lang == 'ta' %}அனைத்தையும் அழிக்க{% else %}Clear All{% endif %}</button>
+        </div>
+
+        <!-- Notification List -->
+        <div class="notif-list" id="notif-list"></div>
+    </main>
+</div>
+
+<div class="notif-toast" id="notif-toast"></div>
+
+<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+{% endblock %}

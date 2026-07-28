@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/crops.css') }}">
+<div class="crops-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item active"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+
+    <main class="crops-main">
+        <!-- Header -->
+        <div class="crops-header">
+            <div class="crops-header-left">
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <div>
+                    <h1 class="crops-title">{{ t('crops_title') }}</h1>
+                    <p class="crops-subtitle">Manage and monitor all your cultivated crops.</p>
+                </div>
+            </div>
+            <div class="crops-header-right">
+                {% if selected_district %}
+                <span class="crops-badge"><span class="badge-dot" style="background:#3b82f6"></span>{{ selected_district }}</span>
+                {% endif %}
+                <span class="crops-badge"><span class="badge-dot" style="background:#10b981"></span><span id="season-badge">{{ t('season_' + current_season) if lang == 'en' else '' }}</span></span>
+                <span class="crops-badge"><span class="badge-dot" style="background:#f59e0b"></span>{{ stats.total_crops }} Active</span>
+                <button class="lang-toggle" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <!-- Quick Statistics -->
+        <div class="crops-stats-row">
+            <div class="crops-stat-card glass" id="stat-total">
+                <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:#10b981">🌾</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Crops</span>
+                    <span class="stat-value" data-target="{{ stats.total_crops }}">0</span>
+                </div>
+            </div>
+            <div class="crops-stat-card glass" id="stat-active">
+                <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:#3b82f6">🌱</div>
+                <div class="stat-info">
+                    <span class="stat-label">Active Crops</span>
+                    <span class="stat-value" data-target="{{ stats.active_crops }}">0</span>
+                </div>
+            </div>
+            <div class="crops-stat-card glass" id="stat-harvest">
+                <div class="stat-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b">🌾</div>
+                <div class="stat-info">
+                    <span class="stat-label">Harvest Ready</span>
+                    <span class="stat-value" data-target="{{ stats.harvest_ready }}">0</span>
+                </div>
+            </div>
+            <div class="crops-stat-card glass" id="stat-area">
+                <div class="stat-icon" style="background:rgba(139,92,246,0.12);color:#8b5cf6">📏</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Area (Acres)</span>
+                    <span class="stat-value" data-target="{{ stats.total_area }}">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tools Bar -->
+        <div class="crops-tools">
+            <div class="crops-tools-left">
+                <button class="crops-btn crops-btn-primary" onclick="openAddModal()"><span class="btn-icon">+</span> Add Crop</button>
+                <div class="crops-search">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="crop-search" placeholder="Search crops..." oninput="debounceSearch()">
+                </div>
+            </div>
+            <div class="crops-tools-right">
+                <select class="crops-select" id="filter-district" onchange="applyFilters()"><option value="">All Districts</option>{% for d in districts %}<option value="{{ d }}">{{ d }}</option>{% endfor %}</select>
+                <select class="crops-select" id="filter-soil" onchange="applyFilters()"><option value="">All Soils</option>{% for s in soil_types %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+                <select class="crops-select" id="filter-status" onchange="applyFilters()"><option value="">All Status</option>{% for s in statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+                <select class="crops-select" id="filter-season" onchange="applyFilters()"><option value="">All Seasons</option>{% for s in seasons %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+                <select class="crops-select" id="sort-crops" onchange="applyFilters()"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="name">Crop Name</option><option value="land_size">Land Size</option></select>
+                <button class="crops-btn crops-btn-secondary" onclick="showExportModal()">📥 Export</button>
+            </div>
+        </div>
+
+        <!-- Crops Table -->
+        <div class="crops-table-wrap glass">
+            <table class="crops-table">
+                <thead><tr>
+                    <th>Crop Name</th><th>Village</th><th>District</th><th>Land (Ac)</th><th>Soil Type</th><th>Season</th><th>Planted</th><th>Harvest</th><th>Status</th><th>Actions</th>
+                </tr></thead>
+                <tbody id="crops-table-body">
+                    {% for c in crops %}
+                    <tr data-id="{{ c.id }}">
+                        <td><span class="crop-name-cell">{{ c.crop_name }}</span></td>
+                        <td>{{ c.village }}</td>
+                        <td>{{ c.district }}</td>
+                        <td>{{ c.land_size }}</td>
+                        <td>{{ c.soil_type }}</td>
+                        <td>{{ c.season }}</td>
+                        <td>{{ c.planting_date[:10] if c.planting_date else '—' }}</td>
+                        <td>{{ c.harvest_date[:10] if c.harvest_date else '—' }}</td>
+                        <td><span class="status-badge status-{{ c.status.lower().replace(' ', '-') }}">{{ c.status }}</span></td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn view" title="View" onclick="viewCrop('{{ c.id }}')">👁</button>
+                                <button class="action-btn edit" title="Edit" onclick="editCrop('{{ c.id }}')">✏️</button>
+                                <button class="action-btn delete" title="Delete" onclick="deleteCrop('{{ c.id }}')">🗑</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="10"><div class="crops-empty">🌾 No crops yet. Add your first crop to get started.</div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="crops-pagination" id="crops-pagination"></div>
+        </div>
+
+        <!-- 2x2 Grid: Insights + Calendar + Recommendations + Activities -->
+        <div class="crops-cards-grid">
+            <!-- Quick Insights -->
+            <div class="crops-insights glass">
+                <h3 class="section-title">📊 Quick Insights</h3>
+                <div class="insights-grid">
+                    <div class="insight-item"><span class="insight-label">Most Cultivated</span><span class="insight-value" id="insight-most">{{ stats.most_cultivated or '—' }}</span></div>
+                    <div class="insight-item"><span class="insight-label">Common Soil</span><span class="insight-value" id="insight-soil">{{ stats.most_common_soil or '—' }}</span></div>
+                    <div class="insight-item"><span class="insight-label">Total Area</span><span class="insight-value">{{ stats.total_area }} ac</span></div>
+                    <div class="insight-item"><span class="insight-label">Common District</span><span class="insight-value" id="insight-district">{{ stats.most_common_district or '—' }}</span></div>
+                    <div class="insight-item"><span class="insight-label">Avg Land Size</span><span class="insight-value">{{ stats.avg_land_size }} ac</span></div>
+                    <div class="insight-item"><span class="insight-label">Growing Now</span><span class="insight-value" id="insight-growing">{{ stats.active_crops }}</span></div>
+                    <div class="insight-item"><span class="insight-label">Harvest Ready</span><span class="insight-value" id="insight-harvest-ready">{{ stats.harvest_ready }}</span></div>
+                    <div class="insight-item"><span class="insight-label">Total Crops</span><span class="insight-value" id="insight-total">{{ stats.total_crops }}</span></div>
+                </div>
+            </div>
+
+            <!-- Crop Calendar -->
+            <div class="crops-calendar glass">
+                <h3 class="section-title">📅 Crop Calendar</h3>
+                <div class="calendar-months" id="crop-calendar">
+                    {% for i in range(1, 13) %}
+                    <div class="cal-month{% if i == current_month %} cal-current{% endif %}">
+                        <span class="cal-month-name">{{ month_names_en[i] }}</span>
+                        <div class="cal-activities" data-month="{{ i }}">
+                            {% for c in crops %}
+                                {% if c.planting_date %}
+                                    {% set pm = c.planting_date[:7] %}
+                                    {% set hm = c.harvest_date[:7] %}
+                                    {% set ym = "%04d-%02d"|format(now_year, i) %}
+                                    {% if pm <= ym <= hm or pm == ym %}
+                                    <span class="cal-dot" style="background:#10b981" title="{{ c.crop_name }}"></span>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="calendar-legend">
+                    <span><span class="legend-dot" style="background:#10b981"></span> Growing</span>
+                    <span><span class="legend-dot" style="background:#f59e0b"></span> Current Month</span>
+                </div>
+            </div>
+
+            <!-- District Recommendations -->
+            <div class="crops-recommendations glass">
+                <div class="rec-header">
+                    <h3 class="section-title">🌍 District-wise Recommendations</h3>
+                    <div class="rec-search-wrap" id="rec-search-wrap">
+                        <input type="text" class="rec-search-input" id="rec-search-input" placeholder="Search districts..." autocomplete="off">
+                        <div class="rec-select-trigger" id="rec-select-trigger">
+                            <span id="rec-selected-label">Select a District</span>
+                            <span class="rec-arrow">▾</span>
+                        </div>
+                        <div class="rec-dropdown" id="rec-dropdown">
+                            {% for d in districts %}
+                            <div class="rec-option" data-value="{{ d }}">{{ d }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="rec-crops" id="rec-crops-list">
+                    <div class="rec-placeholder">
+                        <div class="rec-placeholder-icon">🌾</div>
+                        <h4>District-wise Crop Recommendations</h4>
+                        <p>Select any Tamil Nadu district to view recommended crops, suitable soil types, growing seasons, water requirements, expected yield, and farming insights.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Activities -->
+            <div class="crops-activities glass">
+                <h3 class="section-title">⏰ Upcoming Activities</h3>
+                <div class="activities-list" id="activities-list">
+                    {% if activities %}
+                        {% for a in activities %}
+                        <div class="activity-item activity-{{ a.urgency }}">
+                            <div class="activity-icon">{% if a.type == 'harvest' %}🌾{% else %}💧{% endif %}</div>
+                            <div class="activity-info">
+                                <span class="activity-action">{{ a.action }} {{ a.crop }}</span>
+                                <span class="activity-time">{% if a.days == 0 %}Today{% else %}In {{ a.days }} days{% endif %}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="crops-empty">No upcoming activities. Add crops with dates.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="crop-modal-overlay" id="crop-modal" style="display:none">
+    <div class="crop-modal">
+        <div class="crop-modal-header">
+            <h2 id="modal-title">Add Crop</h2>
+            <button class="crop-modal-close" onclick="closeCropModal()">&times;</button>
+        </div>
+        <form id="crop-form">
+            <input type="hidden" id="crop-id" value="">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Crop Name <span class="req">*</span></label>
+                    <select id="crop_name" required>
+                        {% for c in crop_list %}
+                        <option value="{{ c|capitalize }}">{{ c|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Village Name</label>
+                    <input type="text" id="village" placeholder="e.g. Thiruvaiyaru">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>District <span class="req">*</span></label>
+                    <select id="district" required>
+                        {% for d in districts %}
+                        <option value="{{ d }}"{% if d == selected_district %} selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Land Size (Acres) <span class="req">*</span></label>
+                    <input type="number" id="land_size" step="0.01" min="0.01" required placeholder="e.g. 2.5">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Soil Type <span class="req">*</span></label>
+                    <select id="soil_type" required>
+                        {% for s in soil_types %}
+                        <option value="{{ s }}">{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Season <span class="req">*</span></label>
+                    <select id="season" required>
+                        {% for s in seasons %}
+                        <option value="{{ s }}">{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Planting Date <span class="req">*</span></label>
+                    <input type="date" id="planting_date" required>
+                </div>
+                <div class="form-group">
+                    <label>Expected Harvest <span class="req">*</span></label>
+                    <input type="date" id="harvest_date" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Status <span class="req">*</span></label>
+                    <select id="status" required>
+                        {% for s in statuses %}
+                        <option value="{{ s }}">{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="notes" rows="2" placeholder="Optional notes..."></textarea>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="crops-btn crops-btn-secondary" onclick="closeCropModal()">Cancel</button>
+                <button type="submit" class="crops-btn crops-btn-primary" id="form-submit-btn">Save Crop</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Modal -->
+<div class="crop-modal-overlay" id="view-modal" style="display:none">
+    <div class="crop-modal crop-modal-sm">
+        <div class="crop-modal-header">
+            <h2>Crop Details</h2>
+            <button class="crop-modal-close" onclick="document.getElementById('view-modal').style.display='none'">&times;</button>
+        </div>
+        <div class="view-details" id="view-details"></div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="crop-modal-overlay" id="export-modal" style="display:none">
+    <div class="crop-modal crop-modal-sm">
+        <div class="crop-modal-header">
+            <h2>Export Crops</h2>
+            <button class="crop-modal-close" onclick="document.getElementById('export-modal').style.display='none'">&times;</button>
+        </div>
+        <div class="export-options">
+            <button class="export-option" onclick="exportCrops('csv')">
+                <span class="export-icon">📄</span>
+                <span class="export-label">CSV</span>
+                <span class="export-desc">Plain text spreadsheet</span>
+            </button>
+            <button class="export-option" onclick="exportCrops('xlsx')">
+                <span class="export-icon">📊</span>
+                <span class="export-label">Excel</span>
+                <span class="export-desc">Formatted spreadsheet</span>
+            </button>
+            <button class="export-option" onclick="exportCrops('pdf')">
+                <span class="export-icon">📕</span>
+                <span class="export-label">PDF</span>
+                <span class="export-desc">Portable document</span>
+            </button>
+        </div>
+        <button class="crops-btn crops-btn-secondary" style="width:100%;margin-top:12px" onclick="document.getElementById('export-modal').style.display='none'">Cancel</button>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="crops-toast" id="crops-toast"></div>
+
+<script src="{{ url_for('static', filename='js/crops.js') }}"></script>
+{% endblock %}

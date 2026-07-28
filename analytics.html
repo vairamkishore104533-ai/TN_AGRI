@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/analytics.css') }}">
+<div class="anl-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item active"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+
+    <main class="anl-main">
+        <!-- Header -->
+        <div class="anl-header">
+            <div>
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <h1>📈 {% if lang == 'ta' %}பகுப்பாய்வு{% else %}Analytics{% endif %}</h1>
+                <p class="anl-header-sub">{% if lang == 'ta' %}உங்கள் பண்ணையின் செயல்திறன் பற்றிய விரைவான கண்ணோட்டம்{% else %}Quick overview of your farm's performance{% endif %}</p>
+            </div>
+            <div class="anl-header-actions">
+                <button class="anl-btn anl-btn-ghost" onclick="anlSetLanguage()">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="anl-btn anl-btn-ghost" onclick="toggleTheme()">🌓</button>
+                <button class="anl-btn anl-btn-primary" onclick="anlExport()">📥 {% if lang == 'ta' %}அறிக்கையை ஏற்றுமதி{% else %}Export Report{% endif %}</button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="anl-filters">
+            <div class="anl-filter-group">
+                <label class="anl-filter-label">{% if lang == 'ta' %}காலம்{% else %}Period{% endif %}</label>
+                <select class="anl-select" id="anl-filter-range">
+                    <option value="30d">{% if lang == 'ta' %}கடந்த 30 நாட்கள்{% else %}Last 30 Days{% endif %}</option>
+                    <option value="6m" selected>{% if lang == 'ta' %}கடந்த 6 மாதங்கள்{% else %}Last 6 Months{% endif %}</option>
+                    <option value="1y">{% if lang == 'ta' %}கடந்த 1 வருடம்{% else %}Last 1 Year{% endif %}</option>
+                </select>
+            </div>
+            <div class="anl-filter-group">
+                <label class="anl-filter-label">{% if lang == 'ta' %}பயிர்{% else %}Crop{% endif %}</label>
+                <select class="anl-select" id="anl-filter-crop">
+                    <option value="">{% if lang == 'ta' %}அனைத்து பயிர்கள்{% else %}All Crops{% endif %}</option>
+                </select>
+            </div>
+            <div class="anl-filter-group">
+                <label class="anl-filter-label">{% if lang == 'ta' %}மாவட்டம்{% else %}District{% endif %}</label>
+                <select class="anl-select" id="anl-filter-district">
+                    <option value="">{% if lang == 'ta' %}அனைத்து மாவட்டங்கள்{% else %}All Districts{% endif %}</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Section 1: Overview Cards -->
+        <div class="anl-section">
+            <div class="anl-overview-grid" id="anl-overview"></div>
+        </div>
+
+        <!-- Section 2: Farm Analytics Charts -->
+        <div class="anl-section">
+            <div class="anl-charts-grid">
+                <div class="anl-card anl-card-full">
+                    <div class="anl-card-header">
+                        <h3>🥧 {% if lang == 'ta' %}பயிர் விநியோகம்{% else %}Crop Distribution{% endif %}</h3>
+                    </div>
+                    <div class="anl-chart-wrap"><canvas id="anl-chart-crop-dist"></canvas></div>
+                    <div class="anl-empty-chart" id="anl-empty-crop-dist" style="display:none">
+                        <div class="anl-empty-icon">🌾</div>
+                        <p>{% if lang == 'ta' %}பயிர்களைச் சேர்க்கவும்{% else %}Add crops to see distribution{% endif %}</p>
+                        <a href="{{ url_for('crops.index') }}" class="anl-btn anl-btn-sm anl-btn-primary">{% if lang == 'ta' %}பயிர் சேர்க்க{% else %}Add Crop{% endif %}</a>
+                    </div>
+                </div>
+                <div class="anl-card anl-card-full">
+                    <div class="anl-card-header">
+                        <h3>📊 {% if lang == 'ta' %}மாத வருமானம் vs செலவு{% else %}Monthly Income vs Expense{% endif %}</h3>
+                    </div>
+                    <div class="anl-chart-wrap"><canvas id="anl-chart-finances"></canvas></div>
+                    <div class="anl-empty-chart" id="anl-empty-finances" style="display:none">
+                        <div class="anl-empty-icon">💰</div>
+                        <p>{% if lang == 'ta' %}செலவுகளைப் பதிவு செய்யவும்{% else %}Record income/expenses to see trends{% endif %}</p>
+                        <a href="{{ url_for('expenses.index') }}" class="anl-btn anl-btn-sm anl-btn-primary">{% if lang == 'ta' %}செலவு சேர்க்க{% else %}Add Transaction{% endif %}</a>
+                    </div>
+                </div>
+                <div class="anl-card anl-card-full">
+                    <div class="anl-card-header">
+                        <h3>📈 {% if lang == 'ta' %}விவசாய செயல்பாடுகள்{% else %}Farming Activity{% endif %}</h3>
+                        <div class="anl-timeline-tabs">
+                            <button class="anl-tab active" data-range="30d" onclick="anlSetTimeline('30d')">{% if lang == 'ta' %}30 நா{% else %}30D{% endif %}</button>
+                            <button class="anl-tab" data-range="6m" onclick="anlSetTimeline('6m')">{% if lang == 'ta' %}6 மா{% else %}6M{% endif %}</button>
+                            <button class="anl-tab" data-range="1y" onclick="anlSetTimeline('1y')">{% if lang == 'ta' %}1 ஆ{% else %}1Y{% endif %}</button>
+                        </div>
+                    </div>
+                    <div class="anl-chart-wrap"><canvas id="anl-chart-activity"></canvas></div>
+                    <div class="anl-empty-chart" id="anl-empty-activity" style="display:none">
+                        <div class="anl-empty-icon">🌱</div>
+                        <p>{% if lang == 'ta' %}பயிர்கள், நோய் கண்டறிதல்கள் அல்லது திட்டங்களைச் சேர்க்கவும்{% else %}Add crops, diagnoses, or plans to see activity{% endif %}</p>
+                        <div class="anl-empty-actions">
+                            <a href="{{ url_for('crops.index') }}" class="anl-btn anl-btn-sm anl-btn-primary">🌾 {% if lang == 'ta' %}பயிர்{% else %}Crop{% endif %}</a>
+                            <a href="/crop-diagnosis" class="anl-btn anl-btn-sm anl-btn-primary">🔬 {% if lang == 'ta' %}நோய்{% else %}Diagnose{% endif %}</a>
+                            <a href="/fertilizer" class="anl-btn anl-btn-sm anl-btn-primary">🧪 {% if lang == 'ta' %}உரம்{% else %}Fertilizer{% endif %}</a>
+                            <a href="/irrigation" class="anl-btn anl-btn-sm anl-btn-primary">💧 {% if lang == 'ta' %}நீர்ப்பாசனம்{% else %}Irrigate{% endif %}</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: AI Insights -->
+        <div class="anl-section">
+            <div class="anl-card anl-insights-card">
+                <div class="anl-card-header">
+                    <h3>🤖 {% if lang == 'ta' %}AI நுண்ணறிவுகள்{% else %}AI Insights{% endif %}</h3>
+                    <div class="anl-insights-header-right">
+                        <span class="anl-confidence-badge" id="anl-confidence-badge">🎯 0%</span>
+                        <button class="anl-btn anl-btn-sm anl-btn-ghost" onclick="anlRefreshInsights()">🔄 {% if lang == 'ta' %}புதுப்பிக்க{% else %}Refresh{% endif %}</button>
+                    </div>
+                </div>
+                <div class="anl-insights-loading" id="anl-insights-loading" style="display:none">
+                    <div class="anl-spinner"></div>
+                    <span>{% if lang == 'ta' %}AI பகுப்பாய்வு செய்கிறது...{% else %}AI is analyzing your farm...{% endif %}</span>
+                </div>
+                <div class="anl-insights-body" id="anl-insights-body">
+                    <div class="anl-insights-placeholder">
+                        <div class="anl-empty-icon">🤖</div>
+                        <p>{% if lang == 'ta' %}பகுப்பாய்வை உருவாக்க பண்ணை தரவு தேவை{% else %}Add farm data to get AI-powered insights{% endif %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Quick Statistics -->
+        <div class="anl-section">
+            <div class="anl-card">
+                <div class="anl-card-header">
+                    <h3>⚡ {% if lang == 'ta' %}விரைவான புள்ளிவிவரங்கள்{% else %}Quick Statistics{% endif %}</h3>
+                </div>
+                <div class="anl-quick-grid" id="anl-quick-grid"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div class="anl-toast" id="anl-toast"></div>
+
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+{% endblock %}

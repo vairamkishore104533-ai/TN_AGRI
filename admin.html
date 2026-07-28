@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('admin.index') }}" class="sidebar-nav-item active"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+    <main class="main-content">
+        <div class="page-header">
+            <div><button class="mobile-toggle" onclick="toggleSidebar()">☰</button><h1>{{ t('admin_title') }}</h1></div>
+            <div style="display:flex;gap:8px">
+                <button class="lang-toggle" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <div class="dashboard-grid" id="admin-stats"></div>
+
+        <div style="margin-bottom:24px">
+            <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="showSection('users')">{{ t('admin_users') }}</button>
+                <button class="btn" style="background:var(--gray-100)" onclick="showSection('crops')">{{ t('admin_crops') }}</button>
+                <button class="btn" style="background:var(--gray-100)" onclick="showSection('schemes')">{{ t('admin_schemes') }}</button>
+                <button class="btn" style="background:var(--gray-100)" onclick="showSection('alerts')">{{ t('admin_alerts') }}</button>
+            </div>
+            <div class="stat-card" id="admin-section-content"></div>
+        </div>
+    </main>
+</div>
+
+<!-- Notification Modal -->
+<div class="modal-overlay" id="alert-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>{{ t('admin_add_alert') }}</h2>
+            <button class="modal-close" onclick="closeModal('alert-modal')">&times;</button>
+        </div>
+        <form id="alert-form" style="display:flex;flex-direction:column;gap:16px">
+            <div class="form-group"><label>{{ t('notifications_title') }}</label><input type="text" name="title" required></div>
+            <div class="form-group"><label>{{ t('contact_message') }}</label><textarea name="message" required></textarea></div>
+            <div class="form-group">
+                <label>{{ t('notifications_type_weather') }}</label>
+                <select name="type">
+                    <option value="weather">{{ t('notifications_type_weather') }}</option>
+                    <option value="rain">{{ t('notifications_type_rain') }}</option>
+                    <option value="harvest">{{ t('notifications_type_harvest') }}</option>
+                    <option value="govt">{{ t('notifications_type_govt') }}</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">{{ t('save') }}</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function loadAdminDashboard() {
+    fetch("/api/admin/dashboard").then(r=>r.json()).then(res=>{
+        if(!res.success) return;
+        document.getElementById("admin-stats").innerHTML = `
+            <div class="stat-card"><div class="stat-card-value">${res.total_users}</div><div class="stat-card-label">{{ t('admin_total_users') }}</div></div>
+            <div class="stat-card"><div class="stat-card-value">${res.total_crops}</div><div class="stat-card-label">{{ t('admin_total_crops') }}</div></div>
+            <div class="stat-card"><div class="stat-card-value">${res.total_schemes}</div><div class="stat-card-label">{{ t('stats_schemes') }}</div></div>
+            <div class="stat-card"><div class="stat-card-value">${res.active_today}</div><div class="stat-card-label">{{ t('admin_active_today') }}</div></div>
+        `;
+    });
+    showSection('users');
+}
+
+function showSection(section) {
+    const container = document.getElementById("admin-section-content");
+    if(section === 'users') loadUsers(container);
+    else if(section === 'crops') loadAllCrops(container);
+    else if(section === 'schemes') loadAllSchemes(container);
+    else if(section === 'alerts') showAlertForm(container);
+}
+
+function loadUsers(container) {
+    fetch("/api/admin/users").then(r=>r.json()).then(res=>{
+        if(!res.success) return;
+        container.innerHTML = `<h3 style="margin-bottom:16px">{{ t('admin_users') }}</h3>
+        <table class="data-table"><thead><tr><th>{{ t('profile_username') }}</th><th>{{ t('profile_district') }}</th><th>{{ t('profile_language') }}</th><th>{{ t('edit') }}</th></tr></thead>
+        <tbody>${res.users.map(u => `<tr><td>${u.username}</td><td>${u.district||'-'}</td><td>${u.preferred_language}</td><td><button class="btn" style="padding:4px 10px;font-size:0.8rem;background:#fef2f2;color:#ef4444" onclick="deleteUser('${u.id}')">✕</button></td></tr>`).join("")}</tbody></table>`;
+    });
+}
+
+function loadAllCrops(container) {
+    fetch("/api/admin/crops").then(r=>r.json()).then(res=>{
+        if(!res.success) return;
+        container.innerHTML = `<h3 style="margin-bottom:16px">{{ t('admin_crops') }}</h3>
+        <table class="data-table"><thead><tr><th>{{ t('crop_name') }}</th><th>{{ t('crop_district') }}</th><th>{{ t('crop_soil') }}</th><th>{{ t('crop_land_size') }}</th><th>{{ t('crop_status') }}</th></tr></thead>
+        <tbody>${res.crops.map(c => `<tr><td>${c.crop_name}</td><td>${c.district}</td><td>${c.soil_type}</td><td>${c.land_size} acres</td><td>${c.status}</td></tr>`).join("")}</tbody></table>`;
+    });
+}
+
+function loadAllSchemes(container) {
+    fetch("/api/admin/schemes").then(r=>r.json()).then(res=>{
+        if(!res.success) return;
+        container.innerHTML = `<h3 style="margin-bottom:16px">{{ t('admin_schemes') }}</h3>`;
+        res.schemes.forEach(s => {
+            container.innerHTML += `<div style="padding:16px;border:1px solid var(--border-color);border-radius:var(--radius);margin-bottom:12px">
+                <h4 style="margin-bottom:8px">${s.name}</h4>
+                <p style="color:var(--text-secondary);font-size:0.9rem">${s.benefits}</p>
+            </div>`;
+        });
+    });
+}
+
+function showAlertForm(container) {
+    container.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3>{{ t('admin_alerts') }}</h3>
+        <button class="btn btn-primary" onclick="openModal('alert-modal')">+ {{ t('admin_add_alert') }}</button>
+    </div>`;
+}
+
+function deleteUser(id) {
+    if(!confirm("{{ t('confirm_delete') }}")) return;
+    fetch("/api/admin/users/"+id, {method:"DELETE"}).then(r=>r.json()).then(res=>{
+        if(res.success) { showToast(res.message,"success"); showSection('users'); }
+    });
+}
+
+document.getElementById("alert-form")?.addEventListener("submit", function(e){
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(this));
+    fetch("/api/admin/notifications", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(res=>{
+        if(res.success) { showToast(res.message,"success"); closeModal('alert-modal'); this.reset(); }
+        else showToast(res.message,"error");
+    });
+});
+
+document.addEventListener("DOMContentLoaded", loadAdminDashboard);
+</script>
+{% endblock %}

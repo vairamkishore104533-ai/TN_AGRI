@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/diagnosis.css') }}">
+<div class="diag-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="{{ url_for('diagnosis.index') }}" class="sidebar-nav-item active"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+
+    <main class="diag-main">
+        <!-- Header -->
+        <div class="diag-header">
+            <div class="diag-header-left">
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <div>
+                    <h1 class="diag-title">Crop Diagnosis</h1>
+                    <p class="diag-subtitle">Identify crop diseases accurately and receive treatment recommendations.</p>
+                </div>
+            </div>
+            <div class="diag-header-right">
+                <button class="lang-toggle" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="diag-stats-row">
+            <div class="diag-stat-card glass"><div class="diag-stat-icon" style="background:rgba(16,185,129,0.12);color:#10b981">🔬</div><div class="diag-stat-info"><span class="diag-stat-label">Total Diagnoses</span><span class="diag-stat-value" id="stat-total">{{ stats.total }}</span></div></div>
+            <div class="diag-stat-card glass"><div class="diag-stat-icon" style="background:rgba(59,130,246,0.12);color:#3b82f6">✅</div><div class="diag-stat-info"><span class="diag-stat-label">Healthy Crops</span><span class="diag-stat-value" id="stat-healthy">{{ stats.healthy }}</span></div></div>
+            <div class="diag-stat-card glass"><div class="diag-stat-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b">⚠️</div><div class="diag-stat-info"><span class="diag-stat-label">Diseases Detected</span><span class="diag-stat-value" id="stat-diseases">{{ stats.diseases_detected }}</span></div></div>
+            <div class="diag-stat-card glass"><div class="diag-stat-icon" style="background:rgba(239,68,68,0.12);color:#ef4444">🚨</div><div class="diag-stat-info"><span class="diag-stat-label">Critical Cases</span><span class="diag-stat-value" id="stat-critical">{{ stats.critical }}</span></div></div>
+        </div>
+
+        <!-- Main Diagnosis Card -->
+        <div class="diag-card glass">
+            <div class="diag-card-header"><h3 class="diag-section-title">🔍 Diagnose Your Crop</h3></div>
+            <div class="diag-step-indicator">
+                <div class="diag-step active" id="step-1-indicator"><span class="step-num">1</span><span class="step-label">Select Crop</span></div>
+                <div class="diag-step-line"></div>
+                <div class="diag-step" id="step-2-indicator"><span class="step-num">2</span><span class="step-label">Select Symptoms</span></div>
+                <div class="diag-step-line"></div>
+                <div class="diag-step" id="step-3-indicator"><span class="step-num">3</span><span class="step-label">Get Diagnosis</span></div>
+            </div>
+
+            <!-- Step 1: Select Crop -->
+            <div class="diag-step-content" id="step-1">
+                <div class="diag-crop-select-wrap">
+                    <label class="diag-field-label">Select a Crop</label>
+                    <select id="crop-select" class="diag-select" >
+                        <option value="">Select a Crop</option>
+                        {% for crop in crops %}
+                        <option value="{{ crop }}">{{ crop }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Step 2: Select Symptoms -->
+            <div class="diag-step-content" id="step-2" style="display:none">
+                <div class="diag-symptom-tools">
+                    <div class="diag-search-box">
+                        <span class="diag-search-box-icon">🔍</span>
+                        <input type="text" id="symptom-search" placeholder="Search symptoms..." oninput="filterSymptoms(this.value)">
+                    </div>
+                    <div class="diag-symptom-actions">
+                        <button class="diag-btn diag-btn-sm" onclick="selectAllSymptoms()">Select All</button>
+                        <button class="diag-btn diag-btn-sm" onclick="clearSymptoms()">Clear</button>
+                        <span class="diag-selected-count" id="selected-count">0 selected</span>
+                    </div>
+                </div>
+                <div class="diag-symptom-grid" id="symptom-grid"></div>
+            </div>
+
+            <!-- Step 3: Diagnose Button -->
+            <div class="diag-step-content" id="step-3" style="display:none">
+                <button class="diag-btn diag-btn-primary diag-btn-large" id="diagnose-btn" onclick="analyzeDiagnosis()">🔬 Diagnose Crop</button>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div class="diag-result" id="diag-result" style="display:none">
+            <!-- Disease Header -->
+            <div class="diag-result-header glass" id="result-header">
+                <div class="diag-disease-badge" id="severity-badge">Medium</div>
+                <h2 id="result-disease">Disease Name</h2>
+                <div class="diag-result-meta"><span>Confidence: <strong id="result-confidence">—</strong></span><span>Severity: <strong id="result-severity">—</strong></span></div>
+                <p id="result-description" class="diag-result-desc"></p>
+            </div>
+
+            <div class="diag-result-grid">
+                <div class="diag-result-card glass"><h4>🎯 Causes</h4><p id="result-causes"></p></div>
+                <div class="diag-result-card glass"><h4>🔄 How It Spreads</h4><p id="result-spread"></p></div>
+                <div class="diag-result-card glass severity-high" id="emergency-card" style="display:none"><h4>🚨 Emergency Actions</h4><p id="result-emergency"></p></div>
+            </div>
+
+            <!-- Treatment Plan -->
+            <div class="diag-section-card glass">
+                <h3 class="diag-section-title">💊 Treatment Plan</h3>
+                <div class="diag-treatment-grid">
+                    <div class="diag-treatment-item"><div class="treatment-icon urgent">⚡</div><div><strong>Immediate Actions</strong><p id="result-immediate"></p></div></div>
+                    <div class="diag-treatment-item"><div class="treatment-icon organic">🌱</div><div><strong>Organic Treatment</strong><p id="result-organic"></p></div></div>
+                    <div class="diag-treatment-item"><div class="treatment-icon chemical">🧪</div><div><strong>Chemical Treatment</strong><p id="result-chemical"></p></div></div>
+                    <div class="diag-treatment-item"><div class="treatment-icon prevent">🛡️</div><div><strong>Prevention</strong><p id="result-prevention"></p></div></div>
+                </div>
+            </div>
+
+            <!-- Recovery + Related -->
+            <div class="diag-result-grid-2col">
+                <div class="diag-result-card glass"><h4>⏱️ Recovery Time</h4><p id="result-recovery"></p></div>
+                <div class="diag-result-card glass"><h4>📈 Success Rate</h4><p id="result-success"></p></div>
+                <div class="diag-result-card glass" style="grid-column:1/-1"><h4>🔗 Related Diseases</h4><p id="result-related"></p></div>
+            </div>
+
+            <!-- Full Diagnosis (Markdown) -->
+            <div class="diag-section-card glass" id="result-diagnosis-raw-section" style="display:none">
+                <h3 class="diag-section-title">📋 Full Diagnosis Report</h3>
+                <div class="diag-markdown" id="result-diagnosis-raw"></div>
+            </div>
+
+            <!-- Actions -->
+            <div class="diag-actions-bar glass">
+                <button class="diag-btn diag-btn-primary" onclick="saveDiagnosis()">💾 Save Diagnosis</button>
+                <button class="diag-btn diag-btn-secondary" onclick="exportDiagnosis('txt')">📄 Export TXT</button>
+                <button class="diag-btn diag-btn-secondary" onclick="exportDiagnosis('pdf')">📕 Export PDF</button>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="diag-card glass">
+            <div class="diag-card-header"><h3 class="diag-section-title">📋 Diagnosis History</h3><div class="diag-history-search"><input type="text" id="history-search" placeholder="Search history..." oninput="loadHistory()"></div></div>
+            <div class="diag-history-list" id="history-list">
+                {% if diseases %}
+                    {% for d in diseases %}
+                    <div class="diag-history-item" data-id="{{ d.id }}">
+                        <div class="diag-history-left">
+                            <span class="diag-history-crop">{{ d.crop }}</span>
+                            <span class="diag-history-disease">{{ d.disease }}</span>
+                            <span class="diag-history-date">{{ d.created_at[:10] if d.created_at else '' }}</span>
+                        </div>
+                        <div class="diag-history-right">
+                            <span class="severity-tag severity-{{ d.severity.lower() }}">{{ d.severity }}</span>
+                            <button class="diag-btn-icon" title="View" onclick="viewHistory('{{ d.id }}')">👁</button>
+                            <button class="diag-btn-icon" title="Export" onclick="exportDiagnosisById('{{ d.id }}', 'txt')">📄</button>
+                            <button class="diag-btn-icon" title="Delete" onclick="deleteDiagnosis('{{ d.id }}')">🗑</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="diag-empty">No previous diagnoses. Start by selecting a crop above.</div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- View Modal -->
+<div class="diag-modal-overlay" id="view-modal" style="display:none">
+    <div class="diag-modal">
+        <div class="diag-modal-header"><h2>Diagnosis Details</h2><button class="diag-modal-close" onclick="document.getElementById('view-modal').style.display='none'">&times;</button></div>
+        <div class="diag-modal-body" id="view-modal-body"></div>
+    </div>
+</div>
+
+<div class="diag-toast" id="diag-toast"></div>
+
+<script src="{{ url_for('static', filename='js/diagnosis.js') }}"></script>
+{% endblock %}

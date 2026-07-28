@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/schemes.css') }}">
+<div class="scm-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item active"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+
+    <main class="scm-main">
+        <div class="scm-header">
+            <div>
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <h1><span class="scm-header-icon">🏛️</span> {% if lang == 'ta' %}அரசு திட்டங்கள்{% else %}Government Schemes{% endif %}</h1>
+                <p class="scm-header-sub">{% if lang == 'ta' %}தமிழ்நாடு மற்றும் மத்திய அரசின் விவசாய திட்டங்கள்{% else %}Central & Tamil Nadu government agriculture schemes{% endif %}</p>
+            </div>
+            <div class="scm-header-actions">
+                <button class="scm-btn scm-btn-ghost" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="scm-btn scm-btn-ghost" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <!-- Saved & Recently Viewed Strip -->
+        <div class="scm-strip" id="scm-strip" style="display:none">
+            <div class="scm-strip-section" id="scm-strip-saved" style="display:none">
+                <span class="scm-strip-label">📌 {% if lang == 'ta' %}சேமித்தவை{% else %}Saved{% endif %}:</span>
+                <div class="scm-strip-items" id="scm-strip-saved-items"></div>
+            </div>
+            <div class="scm-strip-section" id="scm-strip-recent" style="display:none">
+                <span class="scm-strip-label">🕐 {% if lang == 'ta' %}சமீபத்தில் பார்த்தவை{% else %}Recent{% endif %}:</span>
+                <div class="scm-strip-items" id="scm-strip-recent-items"></div>
+            </div>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="scm-card scm-search-card">
+            <div class="scm-search-row">
+                <div class="scm-search-field scm-search-input-wrap">
+                    <input type="text" class="scm-search-input" id="scm-search-input" placeholder="{% if lang == 'ta' %}திட்டத்தை தேடுங்கள்...{% else %}Search schemes...{% endif %}" autocomplete="off">
+                </div>
+                <div class="scm-search-field">
+                    <select class="scm-search-select" id="scm-category-select">
+                        <option value="">{% if lang == 'ta' %}அனைத்து வகைகள்{% else %}All Categories{% endif %}</option>
+                        <option value="central_agri">{% if lang == 'ta' %}மத்திய வேளாண்{% else %}Central Agri{% endif %}</option>
+                        <option value="central_finance">{% if lang == 'ta' %}மத்திய நிதி{% else %}Central Finance{% endif %}</option>
+                        <option value="tn_agri">{% if lang == 'ta' %}தமிழ்நாடு வேளாண்{% else %}TN Agri{% endif %}</option>
+                        <option value="tn_finance">{% if lang == 'ta' %}தமிழ்நாடு நிதி{% else %}TN Finance{% endif %}</option>
+                    </select>
+                </div>
+                <button class="scm-btn scm-btn-primary" onclick="scmSearch()">🔍 {% if lang == 'ta' %}தேடுக{% else %}Search{% endif %}</button>
+            </div>
+        </div>
+
+        <!-- AI Recommendation -->
+        <div class="scm-card scm-ai-card" id="scm-ai-card" style="display:none">
+            <div class="scm-ai-header">
+                <h3 class="scm-section-title">🤖 {% if lang == 'ta' %}AI திட்ட பரிந்துரை{% else %}AI Scheme Recommendation{% endif %}</h3>
+                <button class="scm-btn scm-btn-sm scm-btn-ghost" onclick="scmToggleAIForm()">{% if lang == 'ta' %}உங்கள் விவரங்களை உள்ளிடுக{% else %}Enter Your Details{% endif %}</button>
+            </div>
+            <div class="scm-ai-form" id="scm-ai-form" style="display:none">
+                <div class="scm-ai-grid">
+                    <input type="text" class="scm-search-input" id="scm-ai-crops" placeholder="{% if lang == 'ta' %}பயிர்கள் (எ.கா. நெல், கரும்பு){% else %}Crops (e.g. Paddy, Sugarcane){% endif %}">
+                    <input type="text" class="scm-search-input" id="scm-ai-farm-size" placeholder="{% if lang == 'ta' %}நில அளவு (ஏக்கர்){% else %}Farm Size (acres){% endif %}">
+                    <input type="text" class="scm-search-input" id="scm-ai-soil" placeholder="{% if lang == 'ta' %}மண் வகை{% else %}Soil Type{% endif %}">
+                    <input type="text" class="scm-search-input" id="scm-ai-interests" placeholder="{% if lang == 'ta' %}ஆர்வங்கள் (எ.கா. இயற்கை, இயந்திரமயமாக்கல்){% else %}Interests (e.g. organic, mechanization){% endif %}">
+                </div>
+                <button class="scm-btn scm-btn-primary scm-btn-full" onclick="scmGetAIRecommendation()">🤖 {% if lang == 'ta' %}பரிந்துரையைப் பெறுக{% else %}Get Recommendation{% endif %}</button>
+            </div>
+            <div class="scm-ai-result" id="scm-ai-result" style="display:none">
+                <div class="scm-ai-loading" id="scm-ai-loading" style="display:none">
+                    <div class="scm-spinner"></div>
+                    <span>{% if lang == 'ta' %}AI பரிந்துரையை உருவாக்குகிறது...{% else %}Generating AI recommendation...{% endif %}</span>
+                </div>
+                <div class="scm-ai-text" id="scm-ai-text"></div>
+            </div>
+        </div>
+
+        <!-- Featured Schemes -->
+        <div class="scm-card" id="scm-featured-section">
+            <h3 class="scm-section-title">⭐ {% if lang == 'ta' %}முக்கிய திட்டங்கள்{% else %}Featured Schemes{% endif %}</h3>
+            <div class="scm-featured-scroll" id="scm-featured-scroll"></div>
+        </div>
+
+        <!-- Category Grid -->
+        <div class="scm-card" id="scm-categories-section">
+            <h3 class="scm-section-title">📂 {% if lang == 'ta' %}வகைகள்{% else %}Categories{% endif %}</h3>
+            <div class="scm-category-grid" id="scm-category-grid"></div>
+        </div>
+
+        <!-- All Schemes -->
+        <div class="scm-card" id="scm-schemes-section">
+            <div class="scm-card-header-flex">
+                <h3 class="scm-section-title">📋 {% if lang == 'ta' %}அனைத்து திட்டங்கள்{% else %}All Schemes{% endif %} <span class="scm-count" id="scm-count"></span></h3>
+            </div>
+            <div class="scm-scheme-list" id="scm-scheme-list"></div>
+            <div class="scm-loading-more" id="scm-loading-more" style="display:none">
+                <div class="scm-spinner"></div>
+            </div>
+        </div>
+
+        <!-- Eligibility Checker -->
+        <div class="scm-card" id="scm-eligibility-section">
+            <h3 class="scm-section-title">✅ {% if lang == 'ta' %}தகுதி சரிபார்ப்பு{% else %}Eligibility Checker{% endif %}</h3>
+            <p class="scm-eligibility-desc">{% if lang == 'ta' %}ஒரு திட்டத்தைத் தேர்ந்தெடுத்து உங்கள் விவரங்களை உள்ளிட்டு தகுதியை சரிபார்க்கவும்.{% else %}Select a scheme and enter your details to check eligibility.{% endif %}</p>
+            <div class="scm-eligibility-grid">
+                <select class="scm-search-select" id="scm-elig-scheme">
+                    <option value="">{% if lang == 'ta' %}திட்டத்தைத் தேர்ந்தெடுக்கவும்{% else %}Select a scheme{% endif %}</option>
+                </select>
+                <input type="text" class="scm-search-input" id="scm-elig-farm-size" placeholder="{% if lang == 'ta' %}நில அளவு (ஏக்கர்){% else %}Farm Size (acres){% endif %}">
+                <input type="text" class="scm-search-input" id="scm-elig-crop" placeholder="{% if lang == 'ta' %}பயிர் வகை{% else %}Crop type{% endif %}">
+                <input type="text" class="scm-search-input" id="scm-elig-district" placeholder="{% if lang == 'ta' %}மாவட்டம்{% else %}District{% endif %}">
+                <label class="scm-elig-checkbox">
+                    <input type="checkbox" id="scm-elig-women">
+                    <span>{% if lang == 'ta' %}பெண் விவசாயி{% else %}Women Farmer{% endif %}</span>
+                </label>
+                <button class="scm-btn scm-btn-primary" onclick="scmCheckEligibility()">✅ {% if lang == 'ta' %}சரிபார்க்க{% else %}Check{% endif %}</button>
+            </div>
+            <div class="scm-elig-result" id="scm-elig-result" style="display:none"></div>
+        </div>
+
+        <!-- FAQs -->
+        <div class="scm-card" id="scm-faq-section">
+            <h3 class="scm-section-title">❓ {% if lang == 'ta' %}அடிக்கடி கேட்கப்படும் கேள்விகள்{% else %}Frequently Asked Questions{% endif %}</h3>
+            <div class="scm-faq-list" id="scm-faq-list"></div>
+        </div>
+    </main>
+</div>
+
+<!-- Scheme Detail Modal -->
+<div class="scm-modal-overlay" id="scm-modal" style="display:none" onclick="if(event.target===this)scmCloseModal()">
+    <div class="scm-modal">
+        <div class="scm-modal-header">
+            <h2 class="scm-modal-title" id="scm-modal-title"></h2>
+            <button class="scm-modal-close" onclick="scmCloseModal()">✕</button>
+        </div>
+        <div class="scm-modal-body" id="scm-modal-body"></div>
+    </div>
+</div>
+
+<div class="scm-toast" id="scm-toast"></div>
+
+<script>
+var SCM_DATA = {
+    lang: "{{ lang }}",
+    saved: {{ saved_json|safe }},
+    recent: {{ recent_json|safe }},
+    notifications: {{ notifications_json|safe }},
+    featured: {{ featured_json|safe }},
+    categories: {{ categories_json|safe }},
+    faqs: {{ faqs_json|safe }},
+    allSchemes: {{ all_schemes_json|safe }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/schemes.js') }}"></script>
+{% endblock %}

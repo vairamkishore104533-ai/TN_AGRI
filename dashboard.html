@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% block content %}
+{% set district_ta = {
+    'Ariyalur': 'அரியலூர்', 'Chengalpattu': 'செங்கல்பட்டு', 'Chennai': 'சென்னை',
+    'Coimbatore': 'கோயம்புத்தூர்', 'Cuddalore': 'கடலூர்', 'Dharmapuri': 'தர்மபுரி',
+    'Dindigul': 'திண்டுக்கல்', 'Erode': 'ஈரோடு', 'Kallakurichi': 'கள்ளக்குறிச்சி',
+    'Kancheepuram': 'காஞ்சிபுரம்', 'Kanniyakumari': 'கன்னியாகுமரி', 'Karur': 'கரூர்',
+    'Krishnagiri': 'கிருஷ்ணகிரி', 'Madurai': 'மதுரை', 'Mayiladuthurai': 'மயிலாடுதுறை',
+    'Nagapattinam': 'நாகப்பட்டினம்', 'Namakkal': 'நாமக்கல்', 'Nilgiris': 'நீலகிரி',
+    'Perambalur': 'பெரம்பலூர்', 'Pudukkottai': 'புதுக்கோட்டை', 'Ramanathapuram': 'ராமநாதபுரம்',
+    'Ranipet': 'ராணிப்பேட்டை', 'Salem': 'சேலம்', 'Sivaganga': 'சிவகங்கை',
+    'Tenkasi': 'தென்காசி', 'Thanjavur': 'தஞ்சாவூர்', 'Theni': 'தேனி',
+    'Thoothukudi': 'தூத்துக்குடி', 'Tiruchirappalli': 'திருச்சிராப்பள்ளி', 'Tirunelveli': 'திருநெல்வேலி',
+    'Tirupattur': 'திருப்பத்தூர்', 'Tiruppur': 'திருப்பூர்', 'Tiruvallur': 'திருவள்ளூர்',
+    'Tiruvannamalai': 'திருவண்ணாமலை', 'Tiruvarur': 'திருவாரூர்', 'Vellore': 'வேலூர்',
+    'Villupuram': 'விழுப்புரம்', 'Virudhunagar': 'விருதுநகர்'
+} %}
+{% set zone_ta = {
+    'Cauvery Delta Zone': 'காவிரி டெல்டா மண்டலம்',
+    'North Eastern Zone': 'வடகிழக்கு மண்டலம்',
+    'Western Zone': 'மேற்கு மண்டலம்',
+    'Southern Zone': 'தெற்கு மண்டலம்',
+    'Hilly Zone': 'மலை மண்டலம்',
+    'High Rainfall Zone': 'அதிக மழைப்பொழிவு மண்டலம்'
+} %}
+<div class="dashboard-wrapper">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-user">
+                <div class="sidebar-avatar">{{ username[0]|upper }}</div>
+                <div class="sidebar-user-info">
+                    <h4>{{ username }}</h4>
+                    <span>🌾 {{ t('welcome_farmer') }}</span>
+                </div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item active">
+                <span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}
+            </a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}
+            </a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}
+            </a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item" onclick="location.href='/crop-diagnosis';return false">
+                <span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}
+            </a>
+            <a href="/fertilizer" class="sidebar-nav-item">
+                <span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}
+            </a>
+            <a href="/irrigation" class="sidebar-nav-item">
+                <span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}
+            </a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}
+            </a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">📊</span> {{ t('sidebar_market') }}
+            </a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}
+            </a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}
+            </a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}
+            </a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}
+                {% if unread_count > 0 %}<span class="nav-badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">👤</span> {{ t('sidebar_profile') }}
+            </a>
+            {% if is_admin %}
+            <a href="{{ url_for('admin.index') }}" class="sidebar-nav-item">
+                <span class="nav-icon">⚙️</span> {{ t('admin_title') }}
+            </a>
+            {% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item">
+                <span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <div class="page-header">
+            <div>
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <h1>{{ t('dashboard_title') }}</h1>
+                <p>{{ t('welcome_farmer') }}, {{ username }}! 🌾</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <span class="season-badge">
+                    🌱 {{ t('current_season') }}: {{ season }}
+                </span>
+                <button class="lang-toggle" onclick="setLanguage('{{ "ta" if lang == "en" else "en" }}')">
+                    🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span>
+                </button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <!-- Selected District Header -->
+        <div class="sd-header">
+            <div class="sd-header-inner">
+                <span class="sd-icon">📍</span>
+                <div class="sd-info">
+                    <span class="sd-label">
+                        <span class="lang-en">Selected District</span>
+                        <span class="lang-ta">தேர்ந்தெடுக்கப்பட்ட மாவட்டம்</span>
+                    </span>
+                    <span class="sd-name">
+                        <span class="lang-en">{{ selected_district }}</span>
+                        <span class="lang-ta">{{ district_ta.get(selected_district, selected_district) }}</span>
+                    </span>
+                </div>
+                <div class="sd-switcher-wrap">
+                    <button class="sd-change" id="sdChangeBtn" type="button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>
+                        <span class="lang-en">Change</span>
+                        <span class="lang-ta">மாற்ற</span>
+                    </button>
+                    <div class="sd-dropdown" id="sdDropdown">
+                        <div class="sd-dropdown-search">
+                            <input type="text" id="sdSearchInput" placeholder="{{ t('search_district') }}" autocomplete="off">
+                        </div>
+                        <div class="sd-dropdown-list" id="sdDropdownList">
+                            {% for d in all_districts %}
+                            <a href="{{ url_for('dashboard.index', district=d) }}" class="sd-dropdown-item {% if d == selected_district %}sd-active{% endif %}" data-name="{{ d }}">
+                                <span class="lang-en">{{ d }}</span>
+                                <span class="lang-ta">{{ district_ta.get(d, d) }}</span>
+                                {% if d == selected_district %}<span class="sd-dot">✓</span>{% endif %}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if zone and zone_info %}
+        <!-- Zone Info Card -->
+        <div class="zone-card" style="--zone-color: {{ zone_info.get('color', '#059669') }}">
+            <div class="zone-card-bg"></div>
+            <div class="zone-card-content">
+                <div class="zone-header">
+                    <div class="zone-icon-wrap">
+                        <i class="{{ zone_info.get('icon', 'fas fa-leaf') }}"></i>
+                    </div>
+                    <div class="zone-title-group">
+                        <span class="zone-label">
+                            <span class="lang-en">{{ t('your_zone') }}</span>
+                            <span class="lang-ta">உங்கள் வேளாண்-காலநிலை மண்டலம்</span>
+                        </span>
+                        <h3>
+                            <span class="lang-en">{{ zone }}</span>
+                            <span class="lang-ta">{{ zone_ta.get(zone, zone) }}</span>
+                        </h3>
+                    </div>
+                </div>
+                <p class="zone-desc">
+                    <span class="lang-en">{{ zone_info.get('description', '') }}</span>
+                    <span class="lang-ta">{{ zone_info.get('ta_description', '') }}</span>
+                </p>
+                <div class="zone-details">
+                    <div class="zone-detail-item">
+                        <span class="zd-label">🌱 <span class="lang-en">{{ t('soil_type') }}</span><span class="lang-ta">முக்கிய மண் வகைகள்</span></span>
+                        <span class="zd-value">
+                            <span class="lang-en">{{ zone_info.get('soil', '') }}</span>
+                            <span class="lang-ta">{{ zone_info.get('ta_soil', '') }}</span>
+                        </span>
+                    </div>
+                    <div class="zone-detail-item">
+                        <span class="zd-label">🌾 <span class="lang-en">{{ t('major_crops') }}</span><span class="lang-ta">முக்கிய பயிர்கள்</span></span>
+                        <span class="zd-value">
+                            <span class="lang-en">{{ zone_info.get('major_crops', '') }}</span>
+                            <span class="lang-ta">{{ zone_info.get('ta_major_crops', '') }}</span>
+                        </span>
+                    </div>
+                    <div class="zone-detail-item">
+                        <span class="zd-label">🌤️ <span class="lang-en">{{ t('climate') }}</span><span class="lang-ta">காலநிலை</span></span>
+                        <span class="zd-value">
+                            <span class="lang-en">{{ zone_info.get('climate', '') }}</span>
+                            <span class="lang-ta">{{ zone_info.get('ta_climate', '') }}</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Stats Cards 2x2 Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-label">{{ t('analytics_income') }}</span>
+                    <div class="stat-card-icon" style="background:var(--green-50);color:var(--emerald)">💰</div>
+                </div>
+                <div class="stat-card-value">₹{{ "%.0f"|format(income|default(0)) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-label">{{ t('analytics_expense') }}</span>
+                    <div class="stat-card-icon" style="background:#fef2f2;color:#ef4444">💸</div>
+                </div>
+                <div class="stat-card-value">₹{{ "%.0f"|format(expenses|default(0)) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-label">{{ t('analytics_profit') }}</span>
+                    <div class="stat-card-icon" style="background:#dbeafe;color:#3b82f6">📈</div>
+                </div>
+                <div class="stat-card-value">₹{{ "%.0f"|format((income|default(0)) - (expenses|default(0))) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-label">{{ t('analytics_crops') }}</span>
+                    <div class="stat-card-icon" style="background:#fef3c7;color:#f59e0b">🌾</div>
+                </div>
+                <div class="stat-card-value">{{ crop_count }}</div>
+            </div>
+        </div>
+
+        <!-- Weather with dynamic illustration -->
+        {% if weather %}
+        {% set w = weather.condition | lower %}
+        {% if w in ['clear', 'sunny'] %}{% set wi = '☀️' %}
+        {% elif w in ['clouds', 'cloudy', 'overcast'] %}{% set wi = '☁️' %}
+        {% elif w in ['rain', 'drizzle', 'light rain', 'moderate rain', 'heavy rain'] %}{% set wi = '🌧️' %}
+        {% elif w in ['thunderstorm', 'storm'] %}{% set wi = '⛈️' %}
+        {% elif w in ['snow'] %}{% set wi = '🌨️' %}
+        {% elif w in ['mist', 'fog', 'haze'] %}{% set wi = '🌫️' %}
+        {% elif w in ['partly_cloudy', 'partly cloudy'] %}{% set wi = '⛅' %}
+        {% else %}{% set wi = '🌤️' %}
+        {% endif %}
+        <div class="dashboard-grid">
+            <div class="weather-card">
+                <div class="weather-illustration">{{ wi }}</div>
+                <div class="weather-main">
+                    <div>
+                        <div class="weather-temp">{{ weather.temperature }}°C</div>
+                        <div class="weather-condition">{{ wi }} {{ weather.condition }}</div>
+                    </div>
+                </div>
+                <div class="weather-details">
+                    <div class="weather-detail">
+                        <div class="detail-label">{{ t('humidity') }}</div>
+                        <div class="detail-value">{{ weather.humidity }}%</div>
+                    </div>
+                    <div class="weather-detail">
+                        <div class="detail-label">{{ t('wind_speed') }}</div>
+                        <div class="detail-value">{{ weather.wind_speed }} km/h</div>
+                    </div>
+                    <div class="weather-detail">
+                        <div class="detail-label">{{ t('rain_chance') }}</div>
+                        <div class="detail-value">{{ weather.rain_probability }}%</div>
+                    </div>
+                </div>
+            </div>
+            {% if ai_advice %}
+            <div class="stat-card">
+                <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+                    <span>🌾</span> {{ t('weather_farming_advice') }}
+                </h3>
+                <p style="color:var(--text-secondary);line-height:1.7">{{ ai_advice }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Tips -->
+        <div class="stat-card" style="margin-bottom:24px">
+            <div class="tips-card">
+                <h3>🌱 {{ t('todays_tips') }}</h3>
+                <ul>
+                    {% for tip in tips %}
+                    <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="stat-card">
+            <h3 style="margin-bottom:16px">{{ t('quick_actions') }}</h3>
+            <div class="quick-actions">
+                <a href="{{ url_for('chatbot.index') }}" class="quick-action-btn">
+                    <div class="action-icon">🤖</div>
+                    <div class="action-label">{{ t('ai_chat') }}</div>
+                </a>
+                <a href="{{ url_for('crops.index') }}" class="quick-action-btn">
+                    <div class="action-icon">🌾</div>
+                    <div class="action-label">{{ t('crop_management') }}</div>
+                </a>
+                <a href="{{ url_for('weather.index') }}" class="quick-action-btn">
+                    <div class="action-icon">🌤️</div>
+                    <div class="action-label">{{ t('weather') }}</div>
+                </a>
+                <a href="{{ url_for('market.index') }}" class="quick-action-btn">
+                    <div class="action-icon">📊</div>
+                    <div class="action-label">{{ t('market') }}</div>
+                </a>
+                <a href="{{ url_for('schemes.index') }}" class="quick-action-btn">
+                    <div class="action-icon">🏛️</div>
+                    <div class="action-label">{{ t('govt_schemes') }}</div>
+                </a>
+                <a href="{{ url_for('expenses.index') }}" class="quick-action-btn">
+                    <div class="action-icon">💰</div>
+                    <div class="action-label">{{ t('expenses') }}</div>
+                </a>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+(function() {
+    var btn = document.getElementById('sdChangeBtn');
+    var dd = document.getElementById('sdDropdown');
+    if (btn && dd) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dd.classList.toggle('open');
+        });
+        document.addEventListener('click', function(e) {
+            if (!dd.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+                dd.classList.remove('open');
+            }
+        });
+        var inp = document.getElementById('sdSearchInput');
+        var items = document.querySelectorAll('.sd-dropdown-item');
+        if (inp) {
+            inp.addEventListener('input', function() {
+                var q = this.value.toLowerCase().trim();
+                items.forEach(function(it) {
+                    var n = it.getAttribute('data-name') || '';
+                    it.style.display = n.toLowerCase().includes(q) ? '' : 'none';
+                });
+            });
+        }
+    }
+})();
+</script>
+
+{% endblock %}

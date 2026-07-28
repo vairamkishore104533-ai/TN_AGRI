@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}?v=3">
+<div class="mkt-wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><div class="sidebar-user"><div class="sidebar-avatar">{{ username[0]|upper }}</div><div class="sidebar-user-info"><h4>{{ username }}</h4><span>🌾 {{ t('welcome_farmer') }}</span></div></div></div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="sidebar-nav-item"><span class="nav-icon">📊</span> {{ t('sidebar_dashboard') }}</a>
+            <a href="{{ url_for('chatbot.index') }}" class="sidebar-nav-item"><span class="nav-icon">🤖</span> {{ t('sidebar_ai_chat') }}</a>
+            <a href="{{ url_for('crops.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌾</span> {{ t('sidebar_my_crops') }}</a>
+            <a href="/crop-diagnosis" class="sidebar-nav-item"><span class="nav-icon">🔬</span> {{ t('sidebar_crop_diagnosis') }}</a>
+            <a href="/fertilizer" class="sidebar-nav-item"><span class="nav-icon">🧪</span> {{ t('sidebar_fertilizer') }}</a>
+            <a href="/irrigation" class="sidebar-nav-item"><span class="nav-icon">💧</span> {{ t('sidebar_irrigation') }}</a>
+            <a href="{{ url_for('weather.index') }}" class="sidebar-nav-item"><span class="nav-icon">🌤️</span> {{ t('sidebar_weather') }}</a>
+            <a href="{{ url_for('market.index') }}" class="sidebar-nav-item active"><span class="nav-icon">📊</span> {{ t('sidebar_market') }}</a>
+            <a href="{{ url_for('schemes.index') }}" class="sidebar-nav-item"><span class="nav-icon">🏛️</span> {{ t('sidebar_schemes') }}</a>
+            <a href="{{ url_for('expenses.index') }}" class="sidebar-nav-item"><span class="nav-icon">💰</span> {{ t('sidebar_expenses') }}</a>
+            <a href="{{ url_for('analytics.index') }}" class="sidebar-nav-item"><span class="nav-icon">📈</span> {{ t('sidebar_analytics') }}</a>
+            <a href="{{ url_for('notifications.index') }}" class="sidebar-nav-item"><span class="nav-icon">🔔</span> {{ t('sidebar_notifications') }}</a>
+            <a href="{{ url_for('profile.index') }}" class="sidebar-nav-item"><span class="nav-icon">👤</span> {{ t('sidebar_profile') }}</a>
+            {% if is_admin %}<a href="{{ url_for('admin.index') }}" class="sidebar-nav-item"><span class="nav-icon">⚙️</span> {{ t('admin_title') }}</a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-nav-item logout-item"><span class="nav-icon">🚪</span> {{ t('sidebar_logout') }}</a>
+        </nav>
+    </aside>
+
+    <main class="mkt-main">
+        <div class="mkt-header">
+            <div>
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <h1><span class="mkt-header-icon">📊</span> {% if lang == 'ta' %}சந்தை விலைகள்{% else %}Market Prices{% endif %}</h1>
+                <p class="mkt-header-sub">{% if lang == 'ta' %}தமிழ்நாடு விவசாய சந்தைகளின் நேரடி விலைகள்{% else %}Live prices from Tamil Nadu agricultural markets{% endif %}</p>
+            </div>
+            <div class="mkt-header-actions">
+                <button class="mkt-btn mkt-btn-ghost" onclick="mktSetLanguage('{{ "ta" if lang == "en" else "en" }}')">🌐 <span>{{ "English" if lang == "ta" else "தமிழ்" }}</span></button>
+                <button class="mkt-btn mkt-btn-ghost" onclick="toggleTheme()">🌓</button>
+            </div>
+        </div>
+
+        <!-- Favorites Bar -->
+        <div class="mkt-favorites-bar" id="mkt-favorites-bar" style="display:none">
+            <span class="mkt-fav-label">⭐ {% if lang == 'ta' %}விருப்ப பயிர்கள்{% else %}Favorite Crops{% endif %}:</span>
+            <div class="mkt-fav-items" id="mkt-fav-items"></div>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="mkt-card mkt-search-card">
+            <div class="mkt-search-grid">
+                <div class="mkt-search-field">
+                    <label class="mkt-field-label">🌾 {% if lang == 'ta' %}பயிரைத் தேர்ந்தெடுக்கவும்{% else %}Select Crop{% endif %}</label>
+                    <div class="mkt-search-select"><input type="text" class="mkt-search-input" id="mkt-crop-input" placeholder="{% if lang == 'ta' %}பயிரைத் தேடுங்கள்...{% else %}Search crop...{% endif %}" autocomplete="off"></div>
+                </div>
+                <div class="mkt-search-field">
+                    <label class="mkt-field-label">🏪 {% if lang == 'ta' %}சந்தையைத் தேர்ந்தெடுக்கவும்{% else %}Select Market{% endif %}</label>
+                    <div class="mkt-search-select"><input type="text" class="mkt-search-input" id="mkt-market-input" placeholder="{% if lang == 'ta' %}சந்தையைத் தேடுங்கள்...{% else %}Search market...{% endif %}" autocomplete="off"></div>
+                </div>
+                <div class="mkt-search-field mkt-search-btn-wrap">
+                    <button class="mkt-btn mkt-btn-primary mkt-btn-large" onclick="mktFetchPrice()">📊 {% if lang == 'ta' %}சந்தை விலையைப் பெறுக{% else %}Get Market Price{% endif %}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Price Result -->
+        <div class="mkt-price-section" id="mkt-price-section" style="display:none">
+            <div class="mkt-card mkt-price-card">
+                <div class="mkt-price-top">
+                    <div class="mkt-price-left">
+                        <div class="mkt-price-badge" id="mkt-price-badge"></div>
+                        <div class="mkt-price-display">
+                            <span class="mkt-price-value" id="mkt-price-value">--</span>
+                            <span class="mkt-price-unit" id="mkt-price-unit">/Quintal</span>
+                        </div>
+                        <div class="mkt-price-change" id="mkt-price-change"></div>
+                        <div class="mkt-price-status" id="mkt-price-status"></div>
+                        <div class="mkt-price-updated" id="mkt-price-updated"></div>
+                    </div>
+                    <div class="mkt-price-right">
+                        <div class="mkt-compare-grid" id="mkt-compare-grid"></div>
+                    </div>
+                </div>
+                <div class="mkt-price-actions">
+                    <button class="mkt-btn mkt-btn-success mkt-btn-sm" onclick="mktSaveSearch()">💾 {% if lang == 'ta' %}சேமிக்கவும்{% else %}Save{% endif %}</button>
+                    <button class="mkt-btn mkt-btn-ghost mkt-btn-sm" onclick="mktToggleFavorite()">⭐ {% if lang == 'ta' %}விருப்பத்தில் சேர்க்க{% else %}Add to Favorites{% endif %}</button>
+                    <button class="mkt-btn mkt-btn-ghost mkt-btn-sm" onclick="mktExportPrice()">📤 {% if lang == 'ta' %}ஏற்றுமதி{% else %}Export{% endif %}</button>
+                </div>
+            </div>
+
+            <!-- Market Insight -->
+            <div class="mkt-card mkt-insight-card" id="mkt-insight-card" style="display:none">
+                <h3 class="mkt-section-title">🤖 {% if lang == 'ta' %}AI சந்தை நுண்ணறிவு{% else %}AI Market Insight{% endif %}</h3>
+                <div class="mkt-insight-summary" id="mkt-insight-summary">
+                    <div class="mkt-insight-row"><span class="mkt-insight-label">{% if lang == 'ta' %}பயிர்{% else %}Crop{% endif %}</span><span class="mkt-insight-value" id="mkt-ins-crop">--</span></div>
+                    <div class="mkt-insight-row"><span class="mkt-insight-label">{% if lang == 'ta' %}சந்தை{% else %}Market{% endif %}</span><span class="mkt-insight-value" id="mkt-ins-market">--</span></div>
+                    <div class="mkt-insight-row"><span class="mkt-insight-label">{% if lang == 'ta' %}தற்போதைய விலை{% else %}Current Price{% endif %}</span><span class="mkt-insight-value" id="mkt-ins-price">--</span></div>
+                    <div class="mkt-insight-row"><span class="mkt-insight-label">{% if lang == 'ta' %}போக்கு{% else %}Trend{% endif %}</span><span class="mkt-insight-value" id="mkt-ins-trend">--</span></div>
+                </div>
+                <div class="mkt-insight-recs" id="mkt-insight-recs">
+                    <div class="mkt-rec-badge" id="mkt-rec-badge"></div>
+                    <div class="mkt-insight-row"><span class="mkt-insight-label">⏰ {% if lang == 'ta' %}விற்பனைக்கான சிறந்த நேரம்{% else %}Best Time for Selling{% endif %}</span><span class="mkt-insight-value" id="mkt-ins-besttime">--</span></div>
+                    <div class="mkt-insight-row"><span class="mkt-insight-label">📈 {% if lang == 'ta' %}எதிர்பார்க்கப்படும் போக்கு{% else %}Expected Trend{% endif %}</span><span class="mkt-insight-value" id="mkt-ins-expected">--</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Price Comparison Table -->
+        <div class="mkt-card">
+            <div class="mkt-table-header">
+                <h3 class="mkt-section-title">📋 {% if lang == 'ta' %}விலை ஒப்பீடு{% else %}Price Comparison{% endif %}</h3>
+            </div>
+            <div class="mkt-table-wrap">
+                <table class="mkt-table">
+                    <thead><tr>
+                        <th onclick="mktSortTable('market')">{% if lang == 'ta' %}சந்தை{% else %}Market{% endif %} <span class="mkt-sort-icon">↕</span></th>
+                        <th onclick="mktSortTable('price')">{% if lang == 'ta' %}விலை{% else %}Price{% endif %} <span class="mkt-sort-icon">↕</span></th>
+                        <th>{% if lang == 'ta' %}அலகு{% else %}Unit{% endif %}</th>
+                        <th onclick="mktSortTable('trend')">{% if lang == 'ta' %}போக்கு{% else %}Trend{% endif %} <span class="mkt-sort-icon">↕</span></th>
+                        <th>{% if lang == 'ta' %}கடைசியாக புதுப்பிக்கப்பட்டது{% else %}Last Updated{% endif %}</th>
+                    </tr></thead>
+                    <tbody id="mkt-table-body"></tbody>
+                </table>
+            </div>
+            <div class="mkt-pagination" id="mkt-pagination"></div>
+        </div>
+
+        <!-- History -->
+        <div class="mkt-card" id="mkt-history-section">
+            <div class="mkt-table-header">
+                <h3 class="mkt-section-title">💾 {% if lang == 'ta' %}சேமித்த தேடல்கள்{% else %}Saved Searches{% endif %}</h3>
+            </div>
+            <div id="mkt-history-list">{% if history %}{% for h in history %}<div class="mkt-history-item"><div class="mkt-history-info"><span class="mkt-history-location">📊 {{ h.crop }} @ {{ h.market }} — ₹{{ h.price }}</span><span class="mkt-history-details">{{ h.created_at[:10] if h.created_at else '' }}</span></div></div>{% endfor %}{% else %}<div style="text-align:center;padding:20px;color:var(--mkt-text-secondary)">{% if lang == 'ta' %}சேமித்த தேடல்கள் இல்லை. விலையைப் பெற்ற பின் சேமி என்பதைக் கிளிக் செய்யவும்.{% else %}No saved searches. Click Save after fetching a price.{% endif %}</div>{% endif %}</div>
+        </div>
+    </main>
+</div>
+
+<div class="mkt-toast" id="mkt-toast"></div>
+
+<!-- Loading Overlay -->
+<div class="mkt-loading-overlay" id="mkt-loading-overlay" style="display:none">
+    <div class="mkt-loading-card">
+        <div class="mkt-spinner"></div>
+        <p id="mkt-loading-text">{% if lang == 'ta' %}சந்தை தரவுத்தளத்துடன் இணைக்கிறது...{% else %}Connecting to market database...{% endif %}</p>
+    </div>
+</div>
+
+<script>
+var MKT_DATA = {
+    crops: {{ crops_json|safe }},
+    markets: {{ markets_json|safe }},
+    favorites: {{ favorites_json|safe }},
+    history: {{ history_json|safe }},
+    lang: "{{ lang }}"
+};
+</script>
+<script src="{{ url_for('static', filename='js/market.js') }}?v=3"></script>
+{% endblock %}
